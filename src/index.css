@@ -1,0 +1,126 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+  body {
+    @apply bg-[#f3f5f8] text-slate-900 font-sans antialiased min-h-screen;
+  }
+}
+
+@layer components {
+  /* Superfícies de vidro — sempre translúcidas, nunca branco sólido */
+  .glass-card {
+    @apply rounded-[2rem] bg-white/[0.68] border border-white shadow-card;
+  }
+  .glass-panel {
+    @apply rounded-[2rem] bg-white/[0.84] backdrop-blur-2xl border border-white shadow-glass;
+  }
+
+  .eyebrow {
+    @apply font-mono text-xs font-medium tracking-[-0.04em] text-blue-500 uppercase;
+  }
+
+  .badge {
+    @apply inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 font-mono text-[10px] font-medium border;
+  }
+  .badge-blue {
+    @apply badge text-blue-500 bg-blue-50 border-blue-100;
+  }
+  .badge-neutral {
+    @apply badge text-slate-500 bg-white border-slate-200 shadow-control;
+  }
+  .badge-emerald {
+    @apply badge text-emerald-600 bg-emerald-50 border-emerald-100;
+  }
+  .badge-amber {
+    @apply badge text-amber-600 bg-amber-50 border-amber-100;
+  }
+  .badge-red {
+    @apply badge text-red-600 bg-red-50 border-red-100;
+  }
+
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 rounded-full bg-gradient-to-b from-blue-500 to-blue-600 border border-blue-700 text-white text-sm font-normal shadow-btn hover:from-blue-400 hover:to-blue-500 hover:-translate-y-0.5 active:translate-y-0 transition-all duration-300 disabled:opacity-50 disabled:pointer-events-none px-5 py-2.5;
+  }
+  .btn-secondary {
+    @apply inline-flex items-center justify-center gap-2 rounded-full bg-gradient-to-b from-white to-slate-50 border border-slate-200 text-slate-700 text-sm font-normal shadow-control hover:from-slate-50 hover:to-slate-100 hover:-translate-y-0.5 active:translate-y-0 transition-all duration-300 disabled:opacity-50 disabled:pointer-events-none px-5 py-2.5;
+  }
+
+  .input {
+    @apply w-full rounded-2xl bg-white/[0.78] border border-slate-200 shadow-control px-4 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-blue-300 focus:ring-2 focus:ring-blue-100 transition-all duration-300;
+  }
+  .field-label {
+    @apply block font-mono text-[10px] font-medium uppercase tracking-[-0.02em] text-slate-400 mb-1.5;
+  }
+  /* Mesmo visual do field-label, sem display:block (pra <th> de tabela) */
+  .th-label {
+    @apply font-mono text-[10px] font-medium uppercase tracking-[-0.02em] text-slate-400;
+  }
+}
+
+/* Fundo ambiente — blobs em drift lento + textura de pontos (do template AURA) */
+@keyframes auraAmbientDriftOne {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  35% {
+    transform: translate3d(4vw, 3vh, 0) scale(1.06);
+  }
+  70% {
+    transform: translate3d(-2vw, 5vh, 0) scale(0.98);
+  }
+}
+@keyframes auraAmbientDriftTwo {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  40% {
+    transform: translate3d(-4vw, -3vh, 0) scale(1.08);
+  }
+  75% {
+    transform: translate3d(3vw, -5vh, 0) scale(0.96);
+  }
+}
+@keyframes auraAmbientDriftThree {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  50% {
+    transform: translate3d(2vw, -4vh, 0) scale(1.05);
+  }
+}
+@keyframes auraDotDrift {
+  0% {
+    background-position: 0 0;
+  }
+  100% {
+    background-position: 4rem 4rem;
+  }
+}
+.bg-blob-one {
+  animation: auraAmbientDriftOne 26s ease-in-out infinite;
+}
+.bg-blob-two {
+  animation: auraAmbientDriftTwo 32s ease-in-out infinite;
+}
+.bg-blob-three {
+  animation: auraAmbientDriftThree 30s ease-in-out infinite;
+}
+.bg-dots {
+  animation: auraDotDrift 38s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .bg-blob-one,
+  .bg-blob-two,
+  .bg-blob-three,
+  .bg-dots {
+    animation: none;
+  }
+}

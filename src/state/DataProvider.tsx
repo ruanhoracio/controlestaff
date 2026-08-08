@@ -1,0 +1,152 @@
+import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
+import { supabase } from '../lib/supabase'
+import { EQUIPE_PADRAO } from '../lib/config'
+import type { DesignacaoCat, DesignacaoCelula, EquipeConfig, PppRecord } from '../lib/types'
+
+export type NovoPpp = Omit<PppRecord, 'id' | 'created_at'>
+export type NovaDesigCelula = Omit<DesignacaoCelula, 'id' | 'created_at'>
+export type NovaDesigCat = Omit<DesignacaoCat, 'id' | 'created_at'>
+
+interface DataContextValue {
+  carregando: boolean
+  erro: string | null
+  ppp: PppRecord[]
+  salvarPpp: (registro: NovoPpp, id?: string) => Promise<void>
+  excluirPpp: (id: string) => Promise<void>
+  desigCelulas: DesignacaoCelula[]
+  adicionarDesigCelula: (registro: NovaDesigCelula) => Promise<void>
+  excluirDesigCelula: (id: string) => Promise<void>
+  desigCats: DesignacaoCat[]
+  adicionarDesigCat: (registro: NovaDesigCat) => Promise<void>
+  excluirDesigCat: (id: string) => Promise<void>
+  equipe: EquipeConfig
+  salvarEquipe: (equipe: EquipeConfig) => Promise<void>
+}
+
+const DataContext = createContext<DataContextValue | null>(null)
+
+export function useData(): DataContextValue {
+  const ctx = useContext(DataContext)
+  if (!ctx) throw new Error('useData fora do DataProvider')
+  return ctx
+}
+
+export function DataProvider({ children }: { children: ReactNode }) {
+  const [carregando, setCarregando] = useState(true)
+  const [erro, setErro] = useState<string | null>(null)
+  const [ppp, setPpp] = useState<PppRecord[]>([])
+  const [desigCelulas, setDesigCelulas] = useState<DesignacaoCelula[]>([])
+  const [desigCats, setDesigCats] = useState<DesignacaoCat[]>([])
+  const [equipe, setEquipe] = useState<EquipeConfig>(EQUIPE_PADRAO)
+  const [configId, setConfigId] = useState<string | null>(null)
+
+  useEffect(() => {
+    carregarTudo()
+  }, [])
+
+  async function carregarTudo() {
+    setCarregando(true)
+    setErro(null)
+    try {
+      const [rPpp, rCel, rCat, rCfg] = await Promise.all([
+        supabase!.from('ppp_records').select('*').order('data_solicitada', { ascending: false }),
+        supabase!.from('designacoes_celula').select('*').order('created_at', { ascending: false }),
+        supabase!.from('designacoes_cat').select('*').order('created_at', { ascending: false }),
+        supabase!.from('app_config').select('*').limit(1).maybeSingle(),
+      ])
+      const falha = rPpp.error ?? rCel.error ?? rCat.error ?? rCfg.error
+      if (falha) throw falha
+      setPpp(rPpp.data as PppRecord[])
+      setDesigCelulas(rCel.data as DesignacaoCelula[])
+      setDesigCats(rCat.data as DesignacaoCat[])
+      if (rCfg.data) {
+        setConfigId(rCfg.data.id)
+        setEquipe(rCfg.data.equipe as EquipeConfig)
+      } else {
+        // primeira vez: grava a equipe padrão pra já ficar disponível em qualquer máquina
+        const { data, error } = await supabase!
+          .from('app_config')
+          .insert({ equipe: EQUIPE_PADRAO })
+          .select()
+          .single()
+        if (error) throw error
+        setConfigId(data.id)
+        setEquipe(data.equipe as EquipeConfig)
+      }
+    } catch (e: any) {
+      setErro(e.message ?? 'Erro ao carregar os dados.')
+    } finally {
+      setCarregando(false)
+    }
+  }
+
+  async function salvarPpp(registro: NovoPpp, id?: string) {
+    if (id) {
+      const { data, error } = await supabase!.from('ppp_records').update(registro).eq('id', id).select().single()
+      if (error) throw error
+      setPpp((atual) => atual.map((r) => (r.id === id ? (data as PppRecord) : r)))
+    } else {
+      const { data, error } = await supabase!.from('ppp_records').insert(registro).select().single()
+      if (error) throw error
+      setPpp((atual) => [data as PppRecord, ...atual])
+    }
+  }
+
+  async function excluirPpp(id: string) {
+    const { error } = await supabase!.from('ppp_records').delete().eq('id', id)
+    if (error) throw error
+    setPpp((atual) => atual.filter((r) => r.id !== id))
+  }
+
+  async function adicionarDesigCelula(registro: NovaDesigCelula) {
+    const { data, error } = await supabase!.from('designacoes_celula').insert(registro).select().single()
+    if (error) throw error
+    setDesigCelulas((atual) => [data as DesignacaoCelula, ...atual])
+  }
+
+  async function excluirDesigCelula(id: string) {
+    const { error } = await supabase!.from('designacoes_celula').delete().eq('id', id)
+    if (error) throw error
+    setDesigCelulas((atual) => atual.filter((r) => r.id !== id))
+  }
+
+  async function adicionarDesigCat(registro: NovaDesigCat) {
+    const { data, error } = await supabase!.from('designacoes_cat').insert(registro).select().single()
+    if (error) throw error
+    setDesigCats((atual) => [data as DesignacaoCat, ...atual])
+  }
+
+  async function excluirDesigCat(id: string) {
+    const { error } = await supabase!.from('designacoes_cat').delete().eq('id', id)
+    if (error) throw error
+    setDesigCats((atual) => atual.filter((r) => r.id !== id))
+  }
+
+  async function salvarEquipe(nova: EquipeConfig) {
+    const { error } = await supabase!.from('app_config').update({ equipe: nova }).eq('id', configId)
+    if (error) throw error
+    setEquipe(nova)
+  }
+
+  return (
+    <DataContext.Provider
+      value={{
+        carregando,
+        erro,
+        ppp,
+        salvarPpp,
+        excluirPpp,
+        desigCelulas,
+        adicionarDesigCelula,
+        excluirDesigCelula,
+        desigCats,
+        adicionarDesigCat,
+        excluirDesigCat,
+        equipe,
+        salvarEquipe,
+      }}
+    >
+      {children}
+    </DataContext.Provider>
+  )
+}
