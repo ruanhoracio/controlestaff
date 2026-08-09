@@ -3,6 +3,7 @@ import type { Session } from '@supabase/supabase-js'
 import { supabase, supabaseConfigurado } from './lib/supabase'
 import { DataProvider, useData } from './state/DataProvider'
 import { Icone } from './components/Ui'
+import logoMaxipas from './assets/logo-maxipas-branco.png'
 import Setup from './screens/Setup'
 import Login from './screens/Login'
 import Dashboard from './screens/Dashboard'
@@ -95,8 +96,8 @@ function Shell() {
     <div className="relative z-10 min-h-screen">
       {/* Topbar mobile */}
       <div className="lg:hidden fixed top-0 left-0 right-0 z-40 px-4 pt-4">
-        <div className="glass-panel !rounded-full px-4 py-2.5 flex items-center justify-between">
-          <Marca />
+        <div className="glass-panel !rounded-[1.75rem] px-4 py-3 flex items-center justify-between gap-3">
+          <Marca compacto />
           <button
             className="w-9 h-9 rounded-full bg-white/[0.78] border border-slate-200 shadow-control flex items-center justify-center text-slate-600"
             onClick={() => setMenuAberto(!menuAberto)}
@@ -149,16 +150,23 @@ function Shell() {
   )
 }
 
-function Marca() {
+function Marca({ compacto = false }: { compacto?: boolean }) {
   return (
-    <span className="flex items-center gap-3">
-      <span className="w-9 h-9 rounded-full bg-gradient-to-b from-white to-slate-100 border border-slate-200 shadow-control flex items-center justify-center shrink-0">
-        <span className="font-mono text-xs font-medium tracking-[-0.08em] text-blue-600">CS</span>
+    <span className="flex flex-col gap-2 min-w-0">
+      {/* Placa escura: o logo tem o texto em branco, precisa de fundo escuro pra contrastar */}
+      <span className="inline-flex rounded-2xl bg-gradient-to-b from-slate-900 to-slate-950 border border-slate-800 shadow-raised px-4 py-2.5 self-start">
+        <img
+          src={logoMaxipas}
+          alt="Maxipas — Saúde Ocupacional"
+          className={compacto ? 'h-5 w-auto' : 'h-6 w-auto'}
+        />
       </span>
-      <span className="flex flex-col leading-none">
-        <span className="font-mono text-sm font-semibold tracking-[-0.08em] text-slate-950">CONTROLE STAFF</span>
-        <span className="mt-0.5 text-[10px] font-light tracking-[-0.03em] text-slate-400">Segurança do Trabalho</span>
-      </span>
+      {/* No topo mobile o espaço é curto: só a placa, sem a linha de texto */}
+      {!compacto && (
+        <span className="font-mono text-[10px] font-medium tracking-[-0.02em] text-slate-400 uppercase pl-1">
+          Controle Staff
+        </span>
+      )}
     </span>
   )
 }

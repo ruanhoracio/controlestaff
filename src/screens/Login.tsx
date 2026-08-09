@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { supabase } from '../lib/supabase'
 import { Campo, Icone } from '../components/Ui'
+import logoMaxipas from '../assets/logo-maxipas-branco.png'
 
 export default function Login() {
   const [email, setEmail] = useState('')
@@ -38,13 +39,13 @@ export default function Login() {
     <div className="min-h-screen flex items-center justify-center px-6">
       <div className="w-full max-w-sm">
         <div className="glass-panel p-8">
-          <div className="flex items-center gap-3 mb-8">
-            <span className="w-10 h-10 rounded-full bg-gradient-to-b from-white to-slate-100 border border-slate-200 shadow-control flex items-center justify-center">
-              <span className="font-mono text-xs font-medium tracking-[-0.08em] text-blue-600">CS</span>
+          <div className="flex flex-col gap-2.5 mb-8">
+            {/* Placa escura: o logo tem o texto em branco, precisa de fundo escuro pra contrastar */}
+            <span className="inline-flex rounded-2xl bg-gradient-to-b from-slate-900 to-slate-950 border border-slate-800 shadow-raised px-5 py-3.5 self-start">
+              <img src={logoMaxipas} alt="Maxipas — Saúde Ocupacional" className="h-7 w-auto" />
             </span>
-            <span className="flex flex-col leading-none">
-              <span className="font-mono text-sm font-semibold tracking-[-0.08em] text-slate-950">CONTROLE STAFF</span>
-              <span className="mt-1 text-[10px] font-light tracking-[-0.03em] text-slate-400">Segurança do Trabalho</span>
+            <span className="font-mono text-[10px] font-medium tracking-[-0.02em] text-slate-400 uppercase pl-1">
+              Controle Staff · Segurança do Trabalho
             </span>
           </div>
 
