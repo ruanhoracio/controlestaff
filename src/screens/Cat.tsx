@@ -54,7 +54,7 @@ export default function Cat({ irParaEquipe }: { irParaEquipe: () => void }) {
               <div className="flex items-center justify-between gap-3 mb-4">
                 <div>
                   <p className="font-mono text-[10px] uppercase tracking-[-0.02em] text-slate-400">{c.nome}</p>
-                  <p className="text-xs text-slate-500 font-light mt-0.5">Gestor: {c.gestor || '—'}</p>
+                  <p className="text-xs text-slate-500 font-light mt-0.5">Gestor: {c.responsavel || '—'}</p>
                 </div>
                 <span className="badge-neutral">{catsDaCelula.length} no mês</span>
               </div>

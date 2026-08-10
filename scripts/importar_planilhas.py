@@ -54,6 +54,18 @@ BLOCOS_RODIZIO_ATUAL = [
 
 SIGLA_PORTE = {"PE": "Pequena Empresa", "ME": "Média Empresa", "GE": "Grande Empresa", "RC": "Rede Corporativa"}
 
+# Quem faz o eSocial de cada célula, por rodízio. Extraído da planilha: é fixo
+# por célula, mas a Pequena Empresa está uma posição adiante das demais.
+# "Exames" e "Ergonomistas" não têm eSocial.
+_PADRAO = {"Célula I": "Poline", "Célula II": "Miriã", "Célula III": "Edvani"}
+ESOCIAL_POR_RODIZIO = {
+    "Empreiteiras Regionais": _PADRAO,
+    "Pequena Empresa": {"Célula I": "Miriã", "Célula II": "Edvani", "Célula III": "Poline"},
+    "Média Empresa": _PADRAO,
+    "Grande Empresa": _PADRAO,
+    "Rede Corporativa": _PADRAO,
+}
+
 avisos: list[str] = []
 
 
@@ -174,16 +186,16 @@ def ler_ppp(pasta: Path) -> list[dict]:
 
         registros.append(
             dict(
-                empresa=empresa,
-                funcionario=funcionario,
+                empresa=empresa.upper(),
+                funcionario=funcionario.upper(),
                 celula=norm(ws.cell(r, 3).value),
-                tipo=norm(ws.cell(r, 4).value),
+                tipo=norm(ws.cell(r, 4).value).upper(),
                 admissao=data_iso(ws.cell(r, 5).value),
                 demissao=data_iso(ws.cell(r, 6).value),  # 'ATIVO' vira null
                 data_solicitada=solicitado,
                 prazo_entrega=prazo,
                 data_entrega=entrega,
-                responsavel=norm(ws.cell(r, 10).value),
+                responsavel=norm(ws.cell(r, 10).value).upper(),
                 mes=mes,
                 conclusao=conclusao,
                 observacao=observacao,
@@ -229,7 +241,7 @@ def ler_rodizio(pasta: Path) -> list[dict]:
                     empresa=None,
                     celula=normalizar_celula(posicao),
                     responsavel=norm(wsa.cell(r, col + 1).value).title(),
-                    esocial="",
+                    esocial=ESOCIAL_POR_RODIZIO.get(porte, {}).get(normalizar_celula(posicao), ""),
                     pulada=False,
                 )
             )
@@ -257,7 +269,7 @@ def ler_rodizio(pasta: Path) -> list[dict]:
                     # No rodízio de ergonomistas a fila são as pessoas, não as células
                     celula=pessoa if ergonomista else normalizar_celula(posicao),
                     responsavel=pessoa,
-                    esocial="" if ergonomista else norm(ws.cell(r, col + 2).value),
+                    esocial=ESOCIAL_POR_RODIZIO.get(rodizio, {}).get(normalizar_celula(posicao), ""),
                     pulada=pulada,
                 )
             )
@@ -359,12 +371,16 @@ def gerar_sql(ppps, designacoes, cats, equipe_cat, gestores, esocial, ergonomist
         celulas.append(
             {
                 "nome": nome,
+                # O gestor do CAT e o responsável da célula são a mesma pessoa
                 "responsavel": gestores.get(nome, ""),
-                "gestor": gestores.get(nome, ""),
                 "tecnicos": sorted(equipe_cat.get(nome, []), key=lambda s: s.lower()),
             }
         )
-    equipe = {"celulas": celulas, "esocial": esocial, "ergonomistas": ergonomistas}
+    equipe = {
+        "celulas": celulas,
+        "esocial": {"fila": esocial, "porRodizio": ESOCIAL_POR_RODIZIO},
+        "ergonomistas": ergonomistas,
+    }
 
     L = []
     A = L.append

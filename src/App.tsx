@@ -86,7 +86,7 @@ function TelaCarregando() {
 }
 
 const ITENS_MENU: { tela: Tela; rotulo: string; icone: string }[] = [
-  { tela: 'dashboard', rotulo: 'Início', icone: 'solar:widget-linear' },
+  { tela: 'dashboard', rotulo: 'Dashboard', icone: 'solar:widget-linear' },
   { tela: 'ppp', rotulo: 'Controle de PPP', icone: 'solar:document-text-linear' },
   { tela: 'celulas', rotulo: 'Designar Célula', icone: 'solar:buildings-2-linear' },
   { tela: 'cat', rotulo: 'Designar CAT', icone: 'solar:siren-rounded-linear' },

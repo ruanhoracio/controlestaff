@@ -2,6 +2,8 @@ import { useMemo, useState, type FormEvent } from 'react'
 import { useData, type NovoPpp } from '../state/DataProvider'
 import { CELULAS_PPP, CONCLUSOES, PRAZO_PPP_DIAS_UTEIS, TIPOS_PPP } from '../lib/config'
 import { formatarData, hojeISO, rotuloMes, somarDiasUteis } from '../lib/dates'
+import { distintos, maiusculo } from '../lib/texto'
+import GerenciarNomes from './GerenciarNomes'
 import {
   BadgeConclusao,
   CaixaIcone,
@@ -42,6 +44,7 @@ export default function Ppp() {
   const [editando, setEditando] = useState<PppRecord | null>(null)
   const [erro, setErro] = useState<string | null>(null)
   const [limite, setLimite] = useState(100)
+  const [gerenciando, setGerenciando] = useState<'empresa' | 'responsavel' | null>(null)
 
   const empresas = useMemo(() => distintos(ppp.map((r) => r.empresa)), [ppp])
   const responsaveis = useMemo(
@@ -146,16 +149,26 @@ export default function Ppp() {
           titulo="Controle de PPP"
           descricao={`Prazo calculado sozinho: ${PRAZO_PPP_DIAS_UTEIS} dias úteis a partir da solicitação.`}
         />
-        <button
-          className="btn-primary"
-          onClick={() => {
-            setEditando(null)
-            setModalAberto(true)
-          }}
-        >
-          <Icone nome="solar:add-circle-linear" />
-          Novo PPP
-        </button>
+        <div className="flex flex-wrap gap-2">
+          <button className="btn-secondary" onClick={() => setGerenciando('empresa')}>
+            <Icone nome="solar:buildings-2-linear" />
+            Empresas
+          </button>
+          <button className="btn-secondary" onClick={() => setGerenciando('responsavel')}>
+            <Icone nome="solar:users-group-rounded-linear" />
+            Responsáveis
+          </button>
+          <button
+            className="btn-primary"
+            onClick={() => {
+              setEditando(null)
+              setModalAberto(true)
+            }}
+          >
+            <Icone nome="solar:add-circle-linear" />
+            Novo PPP
+          </button>
+        </div>
       </div>
 
       {erro && <p className="mb-4 text-xs text-red-600 bg-red-50 border border-red-100 rounded-2xl px-4 py-3">{erro}</p>}
@@ -335,6 +348,10 @@ export default function Ppp() {
         )}
       </div>
 
+      {gerenciando && (
+        <GerenciarNomes campo={gerenciando} aberto={!!gerenciando} aoFechar={() => setGerenciando(null)} />
+      )}
+
       <FormPpp
         aberto={modalAberto}
         aoFechar={() => setModalAberto(false)}
@@ -419,6 +436,10 @@ function FormPpp({
       await salvarPpp(
         {
           ...form,
+          empresa: maiusculo(form.empresa),
+          funcionario: maiusculo(form.funcionario),
+          responsavel: maiusculo(form.responsavel),
+          tipo: maiusculo(form.tipo),
           data_entrega: dataEntrega,
           mes: mesDoRegistro(form.prazo_entrega, dataEntrega, form.conclusao),
         },
@@ -437,19 +458,19 @@ function FormPpp({
       <form onSubmit={enviar} className="grid sm:grid-cols-2 gap-4">
         <Campo rotulo="Funcionário *">
           <input
-            className="input"
+            className="input uppercase"
             required
             value={form.funcionario}
-            onChange={(e) => definir('funcionario', e.target.value)}
+            onChange={(e) => definir('funcionario', e.target.value.toUpperCase())}
           />
         </Campo>
-        <Campo rotulo="Empresa *">
+        <Campo rotulo="Empresa * (digite para criar uma nova)">
           <input
-            className="input"
+            className="input uppercase"
             required
             list="sug-empresas"
             value={form.empresa}
-            onChange={(e) => definir('empresa', e.target.value)}
+            onChange={(e) => definir('empresa', e.target.value.toUpperCase())}
           />
           <datalist id="sug-empresas">
             {sugestoes.empresas.map((x) => (
@@ -467,10 +488,10 @@ function FormPpp({
         </Campo>
         <Campo rotulo="Tipo">
           <input
-            className="input"
+            className="input uppercase"
             list="sug-tipos"
             value={form.tipo}
-            onChange={(e) => definir('tipo', e.target.value)}
+            onChange={(e) => definir('tipo', e.target.value.toUpperCase())}
           />
           <datalist id="sug-tipos">
             {sugestoes.tipos.map((x) => (
@@ -510,12 +531,12 @@ function FormPpp({
             value={`${formatarData(form.prazo_entrega)} · ${rotuloMes(form.mes)}`}
           />
         </Campo>
-        <Campo rotulo="Responsável">
+        <Campo rotulo="Responsável (digite para criar um novo)">
           <input
-            className="input"
+            className="input uppercase"
             list="sug-responsaveis"
             value={form.responsavel}
-            onChange={(e) => definir('responsavel', e.target.value)}
+            onChange={(e) => definir('responsavel', e.target.value.toUpperCase())}
           />
           <datalist id="sug-responsaveis">
             {sugestoes.responsaveis.map((x) => (
@@ -576,6 +597,3 @@ function FormPpp({
   )
 }
 
-function distintos(valores: string[]): string[] {
-  return [...new Set(valores.filter(Boolean))].sort((a, b) => a.localeCompare(b, 'pt-BR'))
-}

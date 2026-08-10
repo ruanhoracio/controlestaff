@@ -1,15 +1,20 @@
 import { RODIZIOS, RODIZIO_ORDEM, type RodizioId } from './config'
 import type { DesignacaoCat, DesignacaoCelula, EquipeConfig } from './types'
 
+function cfg(rodizioId: string) {
+  return RODIZIOS.find((r) => r.id === rodizioId)
+}
+
 /** Designações de um rodízio, da mais antiga para a mais recente. */
 function emOrdem(historico: DesignacaoCelula[]): DesignacaoCelula[] {
   return [...historico].sort((a, b) => (a.created_at + a.data).localeCompare(b.created_at + b.data))
 }
 
-/** A fila de um rodízio: células, ou os nomes dos ergonomistas. */
+/** A fila de um rodízio: células, nomes de ergonomistas ou a fila de eSocial. */
 export function filaDoRodizio(rodizioId: RodizioId, equipe: EquipeConfig): string[] {
-  const cfg = RODIZIOS.find((r) => r.id === rodizioId)
-  if (cfg?.tipo === 'ergonomista') return equipe.ergonomistas.map((e) => e.nome)
+  const c = cfg(rodizioId)
+  if (c?.tipo === 'ergonomista') return equipe.ergonomistas.map((e) => e.nome)
+  if (c?.tipo === 'esocial') return equipe.esocial.fila
   return [...RODIZIO_ORDEM]
 }
 
@@ -37,23 +42,25 @@ export function proximaCelula(
 }
 
 /**
- * Próximo do rodízio de eSocial. É uma fila própria: avança a cada designação
- * de qualquer rodízio, independente de qual célula foi sorteada.
+ * Quem faz o eSocial da vez.
+ *
+ * O eSocial é fixo por célula, mas cada rodízio tem seu próprio deslocamento:
+ * na Pequena Empresa a fila está uma posição adiante das demais. Rodízios de
+ * Exames e Ergonomistas não têm eSocial.
  */
-export function proximoEsocial(historicoCompleto: DesignacaoCelula[], equipe: EquipeConfig): string | null {
-  // Fila cruza todos os rodízios, então aqui a ordem que vale é a cronológica,
-  // não a ordem da fila de cada rodízio.
-  const ultimo = historicoCompleto
-    .filter((d) => d.esocial)
-    .sort((a, b) => (a.data + a.created_at).localeCompare(b.data + b.created_at))
-    .at(-1)?.esocial
-  return proximoNaFila(equipe.esocial, ultimo)
+export function esocialDaVez(
+  rodizioId: RodizioId,
+  posicao: string | null,
+  equipe: EquipeConfig,
+): string {
+  if (!posicao || !cfg(rodizioId)?.temEsocial) return ''
+  return equipe.esocial.porRodizio?.[rodizioId]?.[posicao] ?? ''
 }
 
-/** Quem responde por uma posição da fila: o responsável da célula, ou o próprio ergonomista. */
+/** Quem responde por uma posição da fila: o responsável da célula, ou a própria pessoa. */
 export function responsavelDaVez(posicao: string, rodizioId: RodizioId, equipe: EquipeConfig): string {
-  const cfg = RODIZIOS.find((r) => r.id === rodizioId)
-  if (cfg?.tipo === 'ergonomista') return posicao
+  const tipo = cfg(rodizioId)?.tipo
+  if (tipo === 'ergonomista' || tipo === 'esocial') return posicao
   return equipe.celulas.find((c) => c.nome === posicao)?.responsavel ?? ''
 }
 

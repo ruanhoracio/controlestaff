@@ -25,7 +25,8 @@ export interface DesignacaoCelula {
   data: string
   porte: string // id do rodízio (ver RODIZIOS em config.ts)
   empresa: string | null // null quando a vez foi pulada ou não registrada
-  celula: string // célula da vez — ou o nome do ergonomista, no rodízio de ergonomistas
+  /** Célula da vez — ou o nome da pessoa nos rodízios de ergonomista e eSocial. */
+  celula: string
   responsavel: string
   esocial: string
   pulada: boolean
@@ -43,8 +44,8 @@ export interface DesignacaoCat {
 
 export interface CelulaEquipe {
   nome: string
+  /** Responsável da célula — é também quem aparece como gestor no CAT. */
   responsavel: string
-  gestor: string
   tecnicos: string[]
 }
 
@@ -53,11 +54,22 @@ export interface Ergonomista {
   celula: string
 }
 
+export interface ConfigEsocial {
+  /** Fila do rodízio de eSocial avulso (empresa sem célula). */
+  fila: string[]
+  /**
+   * Quem faz o eSocial de cada célula, por rodízio. É fixo por célula, mas
+   * cada rodízio tem seu próprio deslocamento — na Pequena Empresa a fila
+   * está uma posição adiante das demais.
+   *
+   * porRodizio['Pequena Empresa']['Célula I'] === 'Miriã'
+   */
+  porRodizio: Record<string, Record<string, string>>
+}
+
 export interface EquipeConfig {
   celulas: CelulaEquipe[]
-  /** Fila do rodízio de eSocial — avança a cada designação, independente da célula. */
-  esocial: string[]
-  /** Fila do rodízio de ergonomistas. */
+  esocial: ConfigEsocial
   ergonomistas: Ergonomista[]
 }
 

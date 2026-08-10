@@ -13,6 +13,7 @@ interface DataContextValue {
   ppp: PppRecord[]
   salvarPpp: (registro: NovoPpp, id?: string) => Promise<void>
   excluirPpp: (id: string) => Promise<void>
+  renomearEmMassa: (campo: 'empresa' | 'responsavel', antigo: string, novo: string) => Promise<void>
   desigCelulas: DesignacaoCelula[]
   adicionarDesigCelula: (registro: NovaDesigCelula) => Promise<void>
   excluirDesigCelula: (id: string) => Promise<void>
@@ -98,6 +99,13 @@ export function DataProvider({ children }: { children: ReactNode }) {
     setPpp((atual) => atual.filter((r) => r.id !== id))
   }
 
+  /** Renomeia uma empresa ou responsável em todos os registros de uma vez. */
+  async function renomearEmMassa(campo: 'empresa' | 'responsavel', antigo: string, novo: string) {
+    const { error } = await supabase!.from('ppp_records').update({ [campo]: novo }).eq(campo, antigo)
+    if (error) throw error
+    setPpp((atual) => atual.map((r) => (r[campo] === antigo ? { ...r, [campo]: novo } : r)))
+  }
+
   async function adicionarDesigCelula(registro: NovaDesigCelula) {
     const { data, error } = await supabase!.from('designacoes_celula').insert(registro).select().single()
     if (error) throw error
@@ -136,6 +144,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
         ppp,
         salvarPpp,
         excluirPpp,
+        renomearEmMassa,
         desigCelulas,
         adicionarDesigCelula,
         excluirDesigCelula,
