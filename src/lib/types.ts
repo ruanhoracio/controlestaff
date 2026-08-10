@@ -50,4 +50,4 @@ export interface EquipeConfig {
   celulas: CelulaEquipe[]
 }
 
-export type Tela = 'dashboard' | 'ppp' | 'celulas' | 'cat' | 'equipe'
+export type Tela = 'dashboard' | 'ppp' | 'celulas' | 'cat' | 'equipe' | 'senha'

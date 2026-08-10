@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import { supabase, supabaseConfigurado } from './lib/supabase'
 import { DataProvider, useData } from './state/DataProvider'
-import { Icone } from './components/Ui'
+import { Icone, TituloTela } from './components/Ui'
 import logoMaxipas from './assets/logo-maxipas-branco.png'
 import Setup from './screens/Setup'
 import Login from './screens/Login'
@@ -11,22 +11,31 @@ import Ppp from './screens/Ppp'
 import Celulas from './screens/Celulas'
 import Cat from './screens/Cat'
 import Equipe from './screens/Equipe'
+import NovaSenha from './screens/NovaSenha'
 import type { Tela } from './lib/types'
 
 export default function App() {
   const [sessao, setSessao] = useState<Session | null>(null)
   const [verificando, setVerificando] = useState(true)
+  const [recuperandoSenha, setRecuperandoSenha] = useState(false)
 
   useEffect(() => {
     if (!supabaseConfigurado) {
       setVerificando(false)
       return
     }
+    // O link de recuperação chega com o token no hash da URL; detectamos antes
+    // do getSession pra abrir direto a tela de nova senha.
+    if (/type=recovery/.test(window.location.hash)) setRecuperandoSenha(true)
+
     supabase!.auth.getSession().then(({ data }) => {
       setSessao(data.session)
       setVerificando(false)
     })
-    const { data: sub } = supabase!.auth.onAuthStateChange((_evento, s) => setSessao(s))
+    const { data: sub } = supabase!.auth.onAuthStateChange((evento, s) => {
+      if (evento === 'PASSWORD_RECOVERY') setRecuperandoSenha(true)
+      setSessao(s)
+    })
     return () => sub.subscription.unsubscribe()
   }, [])
 
@@ -37,6 +46,8 @@ export default function App() {
         <Setup />
       ) : verificando ? (
         <TelaCarregando />
+      ) : recuperandoSenha && sessao ? (
+        <NovaSenha modo="recuperacao" aoConcluir={() => setRecuperandoSenha(false)} />
       ) : !sessao ? (
         <Login />
       ) : (
@@ -141,6 +152,15 @@ function Shell() {
             <Celulas />
           ) : tela === 'cat' ? (
             <Cat irParaEquipe={() => navegar('equipe')} />
+          ) : tela === 'senha' ? (
+            <>
+              <TituloTela
+                eyebrow="Conta"
+                titulo="Trocar senha"
+                descricao="Escolha uma nova senha de acesso ao Controle Staff."
+              />
+              <NovaSenha modo="troca" aoConcluir={() => navegar('dashboard')} />
+            </>
           ) : (
             <Equipe key={String(carregando)} />
           )}
@@ -191,7 +211,16 @@ function Menu({ tela, navegar }: { tela: Tela; navegar: (t: Tela) => void }) {
           </button>
         )
       })}
-      <div className="mt-auto pt-4">
+      <div className="mt-auto pt-4 flex flex-col gap-1">
+        <button
+          onClick={() => navegar('senha')}
+          className={`w-full flex items-center gap-3 rounded-full px-4 py-2.5 text-sm transition-all duration-300 ${
+            tela === 'senha' ? 'text-blue-600 bg-white/70' : 'text-slate-500 hover:text-blue-600 hover:bg-white/70'
+          }`}
+        >
+          <Icone nome="solar:lock-password-linear" className="text-lg" />
+          Trocar senha
+        </button>
         <button
           onClick={() => supabase!.auth.signOut()}
           className="w-full flex items-center gap-3 rounded-full px-4 py-2.5 text-sm text-slate-500 hover:text-red-600 hover:bg-white/70 transition-all duration-300"
