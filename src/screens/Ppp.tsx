@@ -1,16 +1,33 @@
 import { useMemo, useState, type FormEvent } from 'react'
 import { useData, type NovoPpp } from '../state/DataProvider'
-import { PRAZO_PPP_DIAS_UTEIS } from '../lib/config'
+import { CELULAS_PPP, CONCLUSOES, PRAZO_PPP_DIAS_UTEIS, TIPOS_PPP } from '../lib/config'
 import { formatarData, hojeISO, rotuloMes, somarDiasUteis } from '../lib/dates'
-import { BadgeConclusao, CaixaIcone, Campo, EstadoVazio, Icone, Modal, ROTULO_CONCLUSAO, TituloTela } from '../components/Ui'
+import {
+  BadgeConclusao,
+  CaixaIcone,
+  Campo,
+  EstadoVazio,
+  Icone,
+  Modal,
+  ROTULO_CONCLUSAO,
+  TituloTela,
+} from '../components/Ui'
 import type { Conclusao, PppRecord } from '../lib/types'
 
 type FiltroConclusao = '' | Conclusao | 'ATRASADO'
 
-const CONCLUSOES: Conclusao[] = ['ENTREGUE', 'PENDENTE', 'ELETRONICO']
+/** Um PPP conta como pendente enquanto não for concluído de alguma forma. */
+function emAberto(r: PppRecord): boolean {
+  return r.conclusao === 'PENDENTE' || r.conclusao === 'AUXILIO'
+}
 
 function estaAtrasado(r: PppRecord): boolean {
-  return r.conclusao !== 'ENTREGUE' && r.prazo_entrega < hojeISO()
+  return emAberto(r) && r.prazo_entrega < hojeISO()
+}
+
+/** Mês de referência: o da entrega quando entregue, senão o do prazo. */
+export function mesDoRegistro(prazo: string, dataEntrega: string | null, conclusao: Conclusao): string {
+  return (conclusao === 'ENTREGUE' && dataEntrega ? dataEntrega : prazo).slice(0, 7)
 }
 
 export default function Ppp() {
@@ -24,6 +41,7 @@ export default function Ppp() {
   const [modalAberto, setModalAberto] = useState(false)
   const [editando, setEditando] = useState<PppRecord | null>(null)
   const [erro, setErro] = useState<string | null>(null)
+  const [limite, setLimite] = useState(100)
 
   const empresas = useMemo(() => distintos(ppp.map((r) => r.empresa)), [ppp])
   const responsaveis = useMemo(
@@ -31,8 +49,7 @@ export default function Ppp() {
     [ppp, equipe],
   )
   const meses = useMemo(() => [...new Set(ppp.map((r) => r.mes))].sort((a, b) => b.localeCompare(a)), [ppp])
-  const tipos = useMemo(() => distintos(ppp.map((r) => r.tipo)), [ppp])
-  const celulas = equipe.celulas.map((c) => c.nome)
+  const tipos = useMemo(() => distintos([...TIPOS_PPP, ...ppp.map((r) => r.tipo)]), [ppp])
 
   const filtrados = useMemo(() => {
     return ppp.filter((r) => {
@@ -46,19 +63,64 @@ export default function Ppp() {
     })
   }, [ppp, busca, fEmpresa, fResponsavel, fMes, fConclusao])
 
-  const cards: { chave: FiltroConclusao; rotulo: string; icone: string; cor: 'emerald' | 'amber' | 'blue' | 'red'; total: number }[] = [
-    { chave: 'ENTREGUE', rotulo: 'Entregues', icone: 'solar:check-circle-linear', cor: 'emerald', total: ppp.filter((r) => r.conclusao === 'ENTREGUE').length },
-    { chave: 'PENDENTE', rotulo: 'Pendentes', icone: 'solar:hourglass-line-linear', cor: 'amber', total: ppp.filter((r) => r.conclusao === 'PENDENTE').length },
-    { chave: 'ELETRONICO', rotulo: 'Eletrônicos', icone: 'solar:cpu-bolt-linear', cor: 'blue', total: ppp.filter((r) => r.conclusao === 'ELETRONICO').length },
-    { chave: 'ATRASADO', rotulo: 'Atrasados', icone: 'solar:danger-triangle-linear', cor: 'red', total: ppp.filter(estaAtrasado).length },
+  const visiveis = filtrados.slice(0, limite)
+
+  const cards: {
+    chave: FiltroConclusao
+    rotulo: string
+    icone: string
+    cor: 'emerald' | 'amber' | 'blue' | 'red' | 'slate'
+    total: number
+  }[] = [
+    {
+      chave: 'ENTREGUE',
+      rotulo: 'Entregues',
+      icone: 'solar:check-circle-linear',
+      cor: 'emerald',
+      total: ppp.filter((r) => r.conclusao === 'ENTREGUE').length,
+    },
+    {
+      chave: 'PENDENTE',
+      rotulo: 'Pendentes',
+      icone: 'solar:hourglass-line-linear',
+      cor: 'amber',
+      total: ppp.filter((r) => r.conclusao === 'PENDENTE').length,
+    },
+    {
+      chave: 'AUXILIO',
+      rotulo: 'Auxílio',
+      icone: 'solar:hand-heart-linear',
+      cor: 'blue',
+      total: ppp.filter((r) => r.conclusao === 'AUXILIO').length,
+    },
+    {
+      chave: 'ATRASADO',
+      rotulo: 'Atrasados',
+      icone: 'solar:danger-triangle-linear',
+      cor: 'red',
+      total: ppp.filter(estaAtrasado).length,
+    },
+    {
+      chave: 'NAO_SE_APLICA',
+      rotulo: 'Não se aplica',
+      icone: 'solar:forbidden-circle-linear',
+      cor: 'slate',
+      total: ppp.filter((r) => r.conclusao === 'NAO_SE_APLICA' || r.conclusao === 'DESCONSIDERADO').length,
+    },
   ]
 
   async function mudarConclusao(r: PppRecord, nova: Conclusao) {
     setErro(null)
     try {
       const { id, created_at, ...resto } = r
+      const dataEntrega = nova === 'ENTREGUE' && !r.data_entrega ? hojeISO() : r.data_entrega
       await salvarPpp(
-        { ...resto, conclusao: nova, data_entrega: nova === 'ENTREGUE' && !r.data_entrega ? hojeISO() : r.data_entrega },
+        {
+          ...resto,
+          conclusao: nova,
+          data_entrega: dataEntrega,
+          mes: mesDoRegistro(r.prazo_entrega, dataEntrega, nova),
+        },
         r.id,
       )
     } catch (e: any) {
@@ -99,7 +161,7 @@ export default function Ppp() {
       {erro && <p className="mb-4 text-xs text-red-600 bg-red-50 border border-red-100 rounded-2xl px-4 py-3">{erro}</p>}
 
       {/* Cards de conclusão (clicáveis pra filtrar) */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 mb-6">
         {cards.map((c) => (
           <button
             key={c.chave}
@@ -120,7 +182,10 @@ export default function Ppp() {
       {/* Busca e filtros */}
       <div className="glass-card p-4 mb-4 grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
         <div className="relative">
-          <Icone nome="solar:magnifer-linear" className="text-lg absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+          <Icone
+            nome="solar:magnifer-linear"
+            className="text-lg absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
+          />
           <input
             className="input pl-11"
             placeholder="Buscar funcionário…"
@@ -155,88 +220,118 @@ export default function Ppp() {
         {filtrados.length === 0 ? (
           <EstadoVazio
             icone="solar:document-text-linear"
-            mensagem={ppp.length === 0 ? 'Nenhum PPP cadastrado ainda. Clique em “Novo PPP” pra começar.' : 'Nada encontrado com esses filtros.'}
+            mensagem={
+              ppp.length === 0
+                ? 'Nenhum PPP cadastrado ainda. Clique em “Novo PPP” pra começar.'
+                : 'Nada encontrado com esses filtros.'
+            }
           />
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm min-w-[64rem]">
-              <thead>
-                <tr className="text-left border-b border-slate-100">
-                  {['Funcionário', 'Empresa', 'Célula', 'Tipo', 'Solicitado', 'Prazo', 'Entrega', 'Responsável', 'Mês', 'Conclusão', ''].map(
-                    (h, i) => (
+          <>
+            <div className="overflow-x-auto max-h-[36rem]">
+              <table className="w-full text-sm min-w-[68rem]">
+                <thead className="sticky top-0 bg-white/90 backdrop-blur">
+                  <tr className="text-left border-b border-slate-100">
+                    {[
+                      'Funcionário',
+                      'Empresa',
+                      'Célula',
+                      'Tipo',
+                      'Solicitado',
+                      'Prazo',
+                      'Entrega',
+                      'Responsável',
+                      'Mês',
+                      'Conclusão',
+                      '',
+                    ].map((h, i) => (
                       <th key={i} className="th-label px-4 py-3 whitespace-nowrap">
                         {h}
                       </th>
-                    ),
-                  )}
-                </tr>
-              </thead>
-              <tbody>
-                {filtrados.map((r) => {
-                  const atrasado = estaAtrasado(r)
-                  return (
-                    <tr
-                      key={r.id}
-                      className={`border-b border-slate-100 last:border-0 transition-colors duration-300 hover:bg-white/[0.6] ${
-                        atrasado ? 'bg-red-50/60' : ''
-                      }`}
-                    >
-                      <td className="px-4 py-3 text-slate-950 whitespace-nowrap">
-                        {r.funcionario}
-                        {atrasado && <span className="badge-red ml-2">atrasado</span>}
-                      </td>
-                      <td className="px-4 py-3 text-slate-600 whitespace-nowrap">{r.empresa}</td>
-                      <td className="px-4 py-3 text-slate-500 whitespace-nowrap">{r.celula || '—'}</td>
-                      <td className="px-4 py-3 text-slate-500 whitespace-nowrap">{r.tipo || '—'}</td>
-                      <td className="px-4 py-3 text-slate-500 whitespace-nowrap">{formatarData(r.data_solicitada)}</td>
-                      <td className={`px-4 py-3 whitespace-nowrap ${atrasado ? 'text-red-600' : 'text-slate-500'}`}>
-                        {formatarData(r.prazo_entrega)}
-                      </td>
-                      <td className="px-4 py-3 text-slate-500 whitespace-nowrap">{formatarData(r.data_entrega)}</td>
-                      <td className="px-4 py-3 text-slate-600 whitespace-nowrap">{r.responsavel || '—'}</td>
-                      <td className="px-4 py-3 text-slate-500 whitespace-nowrap">{rotuloMes(r.mes)}</td>
-                      <td className="px-4 py-3 whitespace-nowrap">
-                        {/* Atalho pra mudar a conclusão direto na linha */}
-                        <select
-                          className="badge-neutral cursor-pointer appearance-none pr-6 bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%228%22%20height%3D%225%22%3E%3Cpath%20d%3D%22M0%200l4%205%204-5z%22%20fill%3D%22%2394a3b8%22%2F%3E%3C%2Fsvg%3E')] bg-no-repeat bg-[right_0.6rem_center]"
-                          value={r.conclusao}
-                          onChange={(e) => mudarConclusao(r, e.target.value as Conclusao)}
-                        >
-                          {CONCLUSOES.map((c) => (
-                            <option key={c} value={c}>
-                              {ROTULO_CONCLUSAO[c]}
-                            </option>
-                          ))}
-                        </select>
-                        <span className="ml-2 align-middle">
-                          <BadgeConclusao valor={r.conclusao} />
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 whitespace-nowrap text-right">
-                        <button
-                          className="text-slate-400 hover:text-blue-600 transition-colors duration-300 mr-2"
-                          onClick={() => {
-                            setEditando(r)
-                            setModalAberto(true)
-                          }}
-                          aria-label="Editar"
-                        >
-                          <Icone nome="solar:pen-linear" />
-                        </button>
-                        <button
-                          className="text-slate-400 hover:text-red-600 transition-colors duration-300"
-                          onClick={() => excluir(r)}
-                          aria-label="Excluir"
-                        >
-                          <Icone nome="solar:trash-bin-minimalistic-linear" />
-                        </button>
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-          </div>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {visiveis.map((r) => {
+                    const atrasado = estaAtrasado(r)
+                    return (
+                      <tr
+                        key={r.id}
+                        className={`border-b border-slate-100 last:border-0 transition-colors duration-300 hover:bg-white/[0.6] ${
+                          atrasado ? 'bg-red-50/60' : ''
+                        }`}
+                      >
+                        <td className="px-4 py-3 text-slate-950 whitespace-nowrap" title={r.observacao || undefined}>
+                          {r.funcionario}
+                          {atrasado && <span className="badge-red ml-2">atrasado</span>}
+                          {r.observacao && (
+                            <Icone nome="solar:notes-linear" className="text-sm text-slate-300 ml-1.5 align-middle" />
+                          )}
+                        </td>
+                        <td className="px-4 py-3 text-slate-600 whitespace-nowrap">{r.empresa}</td>
+                        <td className="px-4 py-3 text-slate-500 whitespace-nowrap">{r.celula || '—'}</td>
+                        <td className="px-4 py-3 text-slate-500 whitespace-nowrap">{r.tipo || '—'}</td>
+                        <td className="px-4 py-3 text-slate-500 whitespace-nowrap">{formatarData(r.data_solicitada)}</td>
+                        <td className={`px-4 py-3 whitespace-nowrap ${atrasado ? 'text-red-600' : 'text-slate-500'}`}>
+                          {formatarData(r.prazo_entrega)}
+                        </td>
+                        <td className="px-4 py-3 text-slate-500 whitespace-nowrap">{formatarData(r.data_entrega)}</td>
+                        <td className="px-4 py-3 text-slate-600 whitespace-nowrap">{r.responsavel || '—'}</td>
+                        <td className="px-4 py-3 text-slate-500 whitespace-nowrap">{rotuloMes(r.mes)}</td>
+                        <td className="px-4 py-3 whitespace-nowrap">
+                          <div className="flex items-center gap-2">
+                            <BadgeConclusao valor={r.conclusao} />
+                            {/* Atalho pra mudar a conclusão direto na linha */}
+                            <select
+                              className="text-[10px] font-mono text-slate-400 bg-transparent border border-slate-200 rounded-full px-2 py-1 cursor-pointer hover:border-blue-300 hover:text-blue-600 transition-colors duration-300"
+                              value={r.conclusao}
+                              onChange={(e) => mudarConclusao(r, e.target.value as Conclusao)}
+                              aria-label="Mudar conclusão"
+                            >
+                              {CONCLUSOES.map((c) => (
+                                <option key={c} value={c}>
+                                  {ROTULO_CONCLUSAO[c]}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 whitespace-nowrap text-right">
+                          <button
+                            className="text-slate-400 hover:text-blue-600 transition-colors duration-300 mr-2"
+                            onClick={() => {
+                              setEditando(r)
+                              setModalAberto(true)
+                            }}
+                            aria-label="Editar"
+                          >
+                            <Icone nome="solar:pen-linear" />
+                          </button>
+                          <button
+                            className="text-slate-400 hover:text-red-600 transition-colors duration-300"
+                            onClick={() => excluir(r)}
+                            aria-label="Excluir"
+                          >
+                            <Icone nome="solar:trash-bin-minimalistic-linear" />
+                          </button>
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+            <div className="flex items-center justify-between gap-4 px-5 py-3 border-t border-slate-100">
+              <p className="font-mono text-[10px] uppercase tracking-[-0.02em] text-slate-400">
+                mostrando {visiveis.length} de {filtrados.length}
+              </p>
+              {visiveis.length < filtrados.length && (
+                <button className="btn-secondary text-xs px-4 py-2" onClick={() => setLimite((l) => l + 200)}>
+                  Mostrar mais
+                </button>
+              )}
+            </div>
+          </>
         )}
       </div>
 
@@ -244,7 +339,7 @@ export default function Ppp() {
         aberto={modalAberto}
         aoFechar={() => setModalAberto(false)}
         registro={editando}
-        sugestoes={{ empresas, responsaveis, tipos, celulas }}
+        sugestoes={{ empresas, responsaveis, tipos }}
       />
     </div>
   )
@@ -261,7 +356,7 @@ function FormPpp({
   aberto: boolean
   aoFechar: () => void
   registro: PppRecord | null
-  sugestoes: { empresas: string[]; responsaveis: string[]; tipos: string[]; celulas: string[] }
+  sugestoes: { empresas: string[]; responsaveis: string[]; tipos: string[] }
 }) {
   const { salvarPpp } = useData()
   const [salvando, setSalvando] = useState(false)
@@ -280,6 +375,7 @@ function FormPpp({
     responsavel: '',
     mes: somarDiasUteis(hojeISO(), PRAZO_PPP_DIAS_UTEIS).slice(0, 7),
     conclusao: 'PENDENTE',
+    observacao: '',
   }
 
   const [form, setForm] = useState<NovoPpp>(vazio)
@@ -303,11 +399,12 @@ function FormPpp({
   function definir<K extends keyof NovoPpp>(campo: K, valor: NovoPpp[K]) {
     setForm((f) => {
       const novo = { ...f, [campo]: valor }
-      // prazo e mês sempre derivados da data de solicitação
+      // prazo derivado da data de solicitação
       if (campo === 'data_solicitada' && typeof valor === 'string' && valor) {
         novo.prazo_entrega = somarDiasUteis(valor, PRAZO_PPP_DIAS_UTEIS)
-        novo.mes = novo.prazo_entrega.slice(0, 7)
       }
+      // mês derivado do prazo ou da entrega
+      novo.mes = mesDoRegistro(novo.prazo_entrega, novo.data_entrega, novo.conclusao)
       return novo
     })
   }
@@ -317,8 +414,14 @@ function FormPpp({
     setSalvando(true)
     setErro(null)
     try {
+      const dataEntrega =
+        form.conclusao === 'ENTREGUE' && !form.data_entrega ? hojeISO() : form.data_entrega
       await salvarPpp(
-        { ...form, data_entrega: form.conclusao === 'ENTREGUE' && !form.data_entrega ? hojeISO() : form.data_entrega },
+        {
+          ...form,
+          data_entrega: dataEntrega,
+          mes: mesDoRegistro(form.prazo_entrega, dataEntrega, form.conclusao),
+        },
         registro?.id,
       )
       aoFechar()
@@ -333,10 +436,21 @@ function FormPpp({
     <Modal titulo={registro ? 'Editar PPP' : 'Novo PPP'} aberto={aberto} aoFechar={aoFechar} largo>
       <form onSubmit={enviar} className="grid sm:grid-cols-2 gap-4">
         <Campo rotulo="Funcionário *">
-          <input className="input" required value={form.funcionario} onChange={(e) => definir('funcionario', e.target.value)} />
+          <input
+            className="input"
+            required
+            value={form.funcionario}
+            onChange={(e) => definir('funcionario', e.target.value)}
+          />
         </Campo>
         <Campo rotulo="Empresa *">
-          <input className="input" required list="sug-empresas" value={form.empresa} onChange={(e) => definir('empresa', e.target.value)} />
+          <input
+            className="input"
+            required
+            list="sug-empresas"
+            value={form.empresa}
+            onChange={(e) => definir('empresa', e.target.value)}
+          />
           <datalist id="sug-empresas">
             {sugestoes.empresas.map((x) => (
               <option key={x} value={x} />
@@ -346,13 +460,18 @@ function FormPpp({
         <Campo rotulo="Célula">
           <select className="input" value={form.celula} onChange={(e) => definir('celula', e.target.value)}>
             <option value="">—</option>
-            {sugestoes.celulas.map((x) => (
+            {CELULAS_PPP.map((x) => (
               <option key={x}>{x}</option>
             ))}
           </select>
         </Campo>
         <Campo rotulo="Tipo">
-          <input className="input" list="sug-tipos" value={form.tipo} onChange={(e) => definir('tipo', e.target.value)} />
+          <input
+            className="input"
+            list="sug-tipos"
+            value={form.tipo}
+            onChange={(e) => definir('tipo', e.target.value)}
+          />
           <datalist id="sug-tipos">
             {sugestoes.tipos.map((x) => (
               <option key={x} value={x} />
@@ -360,10 +479,20 @@ function FormPpp({
           </datalist>
         </Campo>
         <Campo rotulo="Admissão">
-          <input type="date" className="input" value={form.admissao ?? ''} onChange={(e) => definir('admissao', e.target.value || null)} />
+          <input
+            type="date"
+            className="input"
+            value={form.admissao ?? ''}
+            onChange={(e) => definir('admissao', e.target.value || null)}
+          />
         </Campo>
         <Campo rotulo="Demissão">
-          <input type="date" className="input" value={form.demissao ?? ''} onChange={(e) => definir('demissao', e.target.value || null)} />
+          <input
+            type="date"
+            className="input"
+            value={form.demissao ?? ''}
+            onChange={(e) => definir('demissao', e.target.value || null)}
+          />
         </Campo>
         <Campo rotulo="Data solicitada *">
           <input
@@ -375,7 +504,11 @@ function FormPpp({
           />
         </Campo>
         <Campo rotulo={`Prazo (${PRAZO_PPP_DIAS_UTEIS} dias úteis, automático)`}>
-          <input className="input bg-slate-50 text-slate-500" readOnly value={`${formatarData(form.prazo_entrega)} · ${rotuloMes(form.mes)}`} />
+          <input
+            className="input bg-slate-50 text-slate-500"
+            readOnly
+            value={`${formatarData(form.prazo_entrega)} · ${rotuloMes(form.mes)}`}
+          />
         </Campo>
         <Campo rotulo="Responsável">
           <input
@@ -391,7 +524,11 @@ function FormPpp({
           </datalist>
         </Campo>
         <Campo rotulo="Conclusão">
-          <select className="input" value={form.conclusao} onChange={(e) => definir('conclusao', e.target.value as Conclusao)}>
+          <select
+            className="input"
+            value={form.conclusao}
+            onChange={(e) => definir('conclusao', e.target.value as Conclusao)}
+          >
             {CONCLUSOES.map((c) => (
               <option key={c} value={c}>
                 {ROTULO_CONCLUSAO[c]}
@@ -409,8 +546,22 @@ function FormPpp({
             />
           </Campo>
         )}
+        <div className="sm:col-span-2">
+          <Campo rotulo="Observação">
+            <input
+              className="input"
+              value={form.observacao}
+              onChange={(e) => definir('observacao', e.target.value)}
+              placeholder="Opcional"
+            />
+          </Campo>
+        </div>
 
-        {erro && <p className="sm:col-span-2 text-xs text-red-600 bg-red-50 border border-red-100 rounded-2xl px-4 py-3">{erro}</p>}
+        {erro && (
+          <p className="sm:col-span-2 text-xs text-red-600 bg-red-50 border border-red-100 rounded-2xl px-4 py-3">
+            {erro}
+          </p>
+        )}
 
         <div className="sm:col-span-2 flex justify-end gap-2 pt-2">
           <button type="button" className="btn-secondary" onClick={aoFechar}>

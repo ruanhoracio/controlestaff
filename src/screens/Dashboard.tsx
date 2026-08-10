@@ -1,8 +1,8 @@
 import { useMemo } from 'react'
 import { useData } from '../state/DataProvider'
-import { PORTES } from '../lib/config'
-import { proximaCelula, proximoTecnico } from '../lib/rodizio'
-import { dataLongaHoje, mesAtual, rotuloMes } from '../lib/dates'
+import { RODIZIOS } from '../lib/config'
+import { proximaCelula, proximoEsocial, proximoTecnico, responsavelDaVez } from '../lib/rodizio'
+import { dataLongaHoje, hojeISO, mesAtual, rotuloMes } from '../lib/dates'
 import { CaixaIcone, Eyebrow, Icone, TituloTela } from '../components/Ui'
 import type { Tela } from '../lib/types'
 
@@ -15,28 +15,47 @@ export default function Dashboard({ navegar }: { navegar: (tela: Tela) => void }
     () => [...new Set(entregues.map((r) => r.mes))].sort((a, b) => b.localeCompare(a)).slice(0, 6),
     [entregues],
   )
-  const responsaveis = useMemo(
-    () => [...new Set(entregues.map((r) => r.responsavel).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'pt-BR')),
-    [entregues],
-  )
+  // Só os responsáveis que aparecem nesses meses, pra tabela não ficar quilométrica
+  const responsaveis = useMemo(() => {
+    const nosMeses = entregues.filter((r) => meses.includes(r.mes))
+    const porResp = new Map<string, number>()
+    for (const r of nosMeses) {
+      if (r.responsavel) porResp.set(r.responsavel, (porResp.get(r.responsavel) ?? 0) + 1)
+    }
+    return [...porResp.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 6)
+      .map(([nome]) => nome)
+      .sort((a, b) => a.localeCompare(b, 'pt-BR'))
+  }, [entregues, meses])
+
   const contagem = (mes: string, resp: string) =>
     entregues.filter((r) => r.mes === mes && r.responsavel === resp).length
 
-  // ---- Próxima da vez por porte ----
-  const proximas = PORTES.map((porte) => {
-    const celula = proximaCelula(desigCelulas.filter((d) => d.porte === porte))
-    const cfg = equipe.celulas.find((c) => c.nome === celula)
-    return { porte, celula, responsavel: cfg?.responsavel ?? '—', esocial: cfg?.esocial || '—' }
+  // ---- Próxima da vez por rodízio ----
+  const esocialDaVez = proximoEsocial(desigCelulas, equipe)
+  const proximas = RODIZIOS.map((rod) => {
+    const posicao = proximaCelula(desigCelulas.filter((d) => d.porte === rod.id), rod.id, equipe)
+    return {
+      rodizio: rod.id,
+      posicao,
+      responsavel: posicao ? responsavelDaVez(posicao, rod.id, equipe) : '',
+    }
   })
 
   // ---- Próximo técnico CAT por célula ----
   const catsDoMes = desigCats.filter((d) => d.data.startsWith(mesAtual()))
   const proximosCat = equipe.celulas.map((c) => ({
     celula: c.nome,
-    tecnico: proximoTecnico(c.tecnicos, catsDoMes.filter((d) => d.celula === c.nome)),
+    tecnico: proximoTecnico(
+      c.tecnicos,
+      catsDoMes.filter((d) => d.celula === c.nome),
+    ),
   }))
 
-  const atrasados = ppp.filter((r) => r.conclusao !== 'ENTREGUE' && r.prazo_entrega < new Date().toISOString().slice(0, 10)).length
+  const atrasados = ppp.filter(
+    (r) => (r.conclusao === 'PENDENTE' || r.conclusao === 'AUXILIO') && r.prazo_entrega < hojeISO(),
+  ).length
 
   return (
     <div>
@@ -52,7 +71,9 @@ export default function Dashboard({ navegar }: { navegar: (tela: Tela) => void }
             <p className="text-sm text-slate-950">
               {atrasados} {atrasados === 1 ? 'PPP atrasado' : 'PPPs atrasados'}
             </p>
-            <p className="text-xs text-slate-500 font-light">Passaram do prazo e ainda não foram entregues. Clique pra ver.</p>
+            <p className="text-xs text-slate-500 font-light">
+              Passaram do prazo e ainda não foram entregues. Clique pra ver.
+            </p>
           </div>
         </button>
       )}
@@ -79,7 +100,9 @@ export default function Dashboard({ navegar }: { navegar: (tela: Tela) => void }
                   <tr className="text-left">
                     <th className="th-label pb-2 pr-4 text-left">Mês</th>
                     {responsaveis.map((r) => (
-                      <th key={r} className="th-label pb-2 pr-4 text-left">{r}</th>
+                      <th key={r} className="th-label pb-2 pr-4 text-left">
+                        {r}
+                      </th>
                     ))}
                     <th className="th-label pb-2">Total</th>
                   </tr>
@@ -87,9 +110,11 @@ export default function Dashboard({ navegar }: { navegar: (tela: Tela) => void }
                 <tbody>
                   {meses.map((mes) => (
                     <tr key={mes} className="border-t border-slate-100">
-                      <td className="py-2 pr-4 text-slate-700">{rotuloMes(mes)}</td>
+                      <td className="py-2 pr-4 text-slate-700 whitespace-nowrap">{rotuloMes(mes)}</td>
                       {responsaveis.map((r) => (
-                        <td key={r} className="py-2 pr-4 text-slate-500">{contagem(mes, r) || '—'}</td>
+                        <td key={r} className="py-2 pr-4 text-slate-500">
+                          {contagem(mes, r) || '—'}
+                        </td>
                       ))}
                       <td className="py-2 text-slate-950">{entregues.filter((x) => x.mes === mes).length}</td>
                     </tr>
@@ -106,17 +131,22 @@ export default function Dashboard({ navegar }: { navegar: (tela: Tela) => void }
           className="glass-card p-6 text-left hover:-translate-y-1 hover:bg-white/[0.84] transition-all duration-300"
         >
           <div className="flex items-center justify-between gap-4 mb-5">
-            <CaixaIcone nome="solar:danger-triangle-linear" cor="amber" />
+            <CaixaIcone nome="solar:siren-rounded-linear" cor="amber" />
             <span className="badge-neutral">ciclo de {rotuloMes(mesAtual())}</span>
           </div>
           <h3 className="text-xl font-normal tracking-tight text-slate-950">Próximo CAT por célula</h3>
           <p className="mt-1 text-sm text-slate-500 font-light mb-4">Quem atende o próximo acidente em cada célula.</p>
           <div className="space-y-3">
             {proximosCat.map(({ celula, tecnico }) => (
-              <div key={celula} className="flex items-center justify-between rounded-2xl bg-white/[0.6] border border-white px-4 py-3">
-                <span className="font-mono text-[10px] uppercase tracking-[-0.02em] text-slate-400">{celula}</span>
+              <div
+                key={celula}
+                className="flex items-center justify-between gap-3 rounded-2xl bg-white/[0.6] border border-white px-4 py-3"
+              >
+                <span className="font-mono text-[10px] uppercase tracking-[-0.02em] text-slate-400 shrink-0">
+                  {celula}
+                </span>
                 {tecnico ? (
-                  <span className="text-sm text-slate-950">{tecnico}</span>
+                  <span className="text-sm text-slate-950 truncate">{tecnico}</span>
                 ) : (
                   <span className="text-xs text-slate-400 font-light">cadastre os técnicos em Equipe</span>
                 )}
@@ -126,12 +156,17 @@ export default function Dashboard({ navegar }: { navegar: (tela: Tela) => void }
         </button>
       </div>
 
-      {/* Próxima da vez por porte */}
+      {/* Próxima da vez por rodízio */}
       <div className="glass-card p-6">
-        <div className="flex items-center justify-between gap-4 mb-5">
+        <div className="flex flex-wrap items-center justify-between gap-4 mb-5">
           <div>
             <Eyebrow>Rodízio de empresas novas</Eyebrow>
-            <h3 className="text-xl font-normal tracking-tight text-slate-950">Próxima da vez, por porte</h3>
+            <h3 className="text-xl font-normal tracking-tight text-slate-950">Próxima da vez, por rodízio</h3>
+            {esocialDaVez && (
+              <p className="text-xs text-slate-500 font-light mt-1">
+                eSocial da vez: <span className="text-slate-950">{esocialDaVez}</span>
+              </p>
+            )}
           </div>
           <button onClick={() => navegar('celulas')} className="btn-secondary text-xs px-4 py-2">
             Designar
@@ -141,14 +176,21 @@ export default function Dashboard({ navegar }: { navegar: (tela: Tela) => void }
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
           {proximas.map((p) => (
             <button
-              key={p.porte}
+              key={p.rodizio}
               onClick={() => navegar('celulas')}
               className="text-left rounded-2xl bg-white/[0.6] border border-white p-4 hover:-translate-y-0.5 hover:bg-white/[0.84] transition-all duration-300"
             >
-              <p className="font-mono text-[10px] uppercase tracking-[-0.02em] text-slate-400 mb-2">{p.porte}</p>
-              <p className="text-lg text-slate-950 tracking-tight">{p.celula}</p>
-              <p className="text-xs text-slate-500 font-light mt-1">{p.responsavel}</p>
-              <p className="text-xs text-slate-400 font-light">eSocial: {p.esocial}</p>
+              <p className="font-mono text-[10px] uppercase tracking-[-0.02em] text-slate-400 mb-2 leading-4">
+                {p.rodizio}
+              </p>
+              {p.posicao ? (
+                <>
+                  <p className="text-lg text-slate-950 tracking-tight">{p.posicao}</p>
+                  <p className="text-xs text-slate-500 font-light mt-1">{p.responsavel || '—'}</p>
+                </>
+              ) : (
+                <p className="text-xs text-slate-400 font-light">sem fila configurada</p>
+              )}
             </button>
           ))}
         </div>

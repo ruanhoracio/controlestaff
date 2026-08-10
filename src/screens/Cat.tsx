@@ -128,9 +128,9 @@ export default function Cat({ irParaEquipe }: { irParaEquipe: () => void }) {
         {desigCats.length === 0 ? (
           <EstadoVazio icone="solar:siren-rounded-linear" mensagem="Nenhum CAT designado ainda." />
         ) : (
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto max-h-[32rem]">
             <table className="w-full text-sm min-w-[36rem]">
-              <thead>
+              <thead className="sticky top-0 bg-white/90 backdrop-blur">
                 <tr className="text-left border-b border-slate-100">
                   {['Data', 'Célula', 'Técnico', 'Modo', ''].map((h, i) => (
                     <th key={i} className="th-label px-4 py-3 whitespace-nowrap">

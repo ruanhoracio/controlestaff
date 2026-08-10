@@ -37,12 +37,21 @@ export function CaixaIcone({ nome, cor = 'blue' }: { nome: string; cor?: 'blue' 
 export const ROTULO_CONCLUSAO: Record<Conclusao, string> = {
   ENTREGUE: 'Entregue',
   PENDENTE: 'Pendente',
-  ELETRONICO: 'Eletrônico',
+  AUXILIO: 'Auxílio',
+  NAO_SE_APLICA: 'Não se aplica',
+  DESCONSIDERADO: 'Desconsiderado',
+}
+
+const CLASSE_CONCLUSAO: Record<Conclusao, string> = {
+  ENTREGUE: 'badge-emerald',
+  PENDENTE: 'badge-amber',
+  AUXILIO: 'badge-blue',
+  NAO_SE_APLICA: 'badge-neutral',
+  DESCONSIDERADO: 'badge-neutral',
 }
 
 export function BadgeConclusao({ valor }: { valor: Conclusao }) {
-  const classe = valor === 'ENTREGUE' ? 'badge-emerald' : valor === 'PENDENTE' ? 'badge-amber' : 'badge-blue'
-  return <span className={classe}>{ROTULO_CONCLUSAO[valor]}</span>
+  return <span className={CLASSE_CONCLUSAO[valor] ?? 'badge-neutral'}>{ROTULO_CONCLUSAO[valor] ?? valor}</span>
 }
 
 export function Campo({ rotulo, children }: { rotulo: string; children: ReactNode }) {
