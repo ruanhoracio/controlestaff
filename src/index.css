@@ -2,64 +2,315 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ===========================================================================
+   Paleta
+   - claro: o design system AURA (fundo #f3f5f8, primária azul)
+   - escuro: as cores do Grupo Hera (azul-marinho profundo + dourado)
+   Os componentes abaixo leem estas variáveis, então trocar de tema troca
+   tudo de uma vez.
+   =========================================================================== */
+:root {
+  --fundo: #f3f5f8;
+  --superficie: 255 255 255; /* rgb, usado com opacidade */
+  --superficie-op: 0.68;
+  --superficie-op-forte: 0.84;
+  --borda: #ffffff;
+  --borda-controle: #e2e8f0; /* slate-200 */
+  --borda-sutil: #f1f5f9; /* slate-100 */
+
+  --texto-forte: #020617; /* slate-950 */
+  --texto: #475569; /* slate-600 */
+  --texto-suave: #64748b; /* slate-500 */
+  --texto-fraco: #94a3b8; /* slate-400 */
+
+  --acao-de: #3b82f6; /* blue-500 */
+  --acao-para: #2563eb; /* blue-600 */
+  --acao-borda: #1d4ed8; /* blue-700 */
+  --acao-texto: #ffffff;
+  --acao-sombra: 59 130 246;
+  --realce: #3b82f6;
+  --realce-suave: #eff6ff;
+  --realce-borda: #dbeafe;
+
+  --brilho-interno: rgba(255, 255, 255, 1);
+  --sombra-cor: 15 23 42;
+}
+
+.dark {
+  --fundo: #0b1220;
+  --superficie: 26 35 55; /* #1A2337 */
+  --superficie-op: 0.72;
+  --superficie-op-forte: 0.9;
+  --borda: rgba(201, 169, 97, 0.14);
+  --borda-controle: #2a3450;
+  --borda-sutil: #1e2740;
+
+  --texto-forte: #f1f3f8;
+  --texto: #b9c2d8;
+  --texto-suave: #94a0bc;
+  --texto-fraco: #6f7d9c;
+
+  --acao-de: #d4b672;
+  --acao-para: #c9a961;
+  --acao-borda: #a8874a;
+  --acao-texto: #0b1220;
+  --acao-sombra: 201 169 97;
+  --realce: #d4b672;
+  --realce-suave: rgba(201, 169, 97, 0.12);
+  --realce-borda: rgba(201, 169, 97, 0.28);
+
+  --brilho-interno: rgba(255, 255, 255, 0.06);
+  --sombra-cor: 0 0 0;
+}
+
 @layer base {
   html {
     scroll-behavior: smooth;
   }
   body {
-    @apply bg-[#f3f5f8] text-slate-900 font-sans antialiased min-h-screen;
+    @apply font-sans antialiased min-h-screen;
+    background-color: var(--fundo);
+    color: var(--texto-forte);
+    transition: background-color 0.4s ease, color 0.4s ease;
+  }
+  /* Setas dos <select> e ícones nativos legíveis no escuro */
+  .dark select option {
+    background-color: #131b2e;
+    color: #f1f3f8;
+  }
+  .dark input[type='date']::-webkit-calendar-picker-indicator {
+    filter: invert(0.8);
   }
 }
 
 @layer components {
-  /* Superfícies de vidro — sempre translúcidas, nunca branco sólido */
+  /* Superfícies de vidro — sempre translúcidas, nunca sólidas */
   .glass-card {
-    @apply rounded-[2rem] bg-white/[0.68] border border-white shadow-card;
+    @apply rounded-[2rem] shadow-card border;
+    background-color: rgb(var(--superficie) / var(--superficie-op));
+    border-color: var(--borda);
+  }
+  .glass-card:hover {
+    background-color: rgb(var(--superficie) / var(--superficie-op-forte));
   }
   .glass-panel {
-    @apply rounded-[2rem] bg-white/[0.84] backdrop-blur-2xl border border-white shadow-glass;
+    @apply rounded-[2rem] backdrop-blur-2xl shadow-glass border;
+    background-color: rgb(var(--superficie) / var(--superficie-op-forte));
+    border-color: var(--borda);
   }
 
   .eyebrow {
-    @apply font-mono text-xs font-medium tracking-[-0.04em] text-blue-500 uppercase;
+    @apply font-mono text-xs font-medium tracking-[-0.04em] uppercase;
+    color: var(--realce);
   }
 
   .badge {
     @apply inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 font-mono text-[10px] font-medium border;
   }
   .badge-blue {
-    @apply badge text-blue-500 bg-blue-50 border-blue-100;
+    @apply badge;
+    color: var(--realce);
+    background-color: var(--realce-suave);
+    border-color: var(--realce-borda);
   }
   .badge-neutral {
-    @apply badge text-slate-500 bg-white border-slate-200 shadow-control;
+    @apply badge;
+    color: var(--texto-suave);
+    background-color: rgb(var(--superficie) / 0.6);
+    border-color: var(--borda-controle);
   }
   .badge-emerald {
-    @apply badge text-emerald-600 bg-emerald-50 border-emerald-100;
+    @apply badge text-emerald-600 bg-emerald-50 border-emerald-100 dark:text-emerald-300 dark:bg-emerald-400/10 dark:border-emerald-400/25;
   }
   .badge-amber {
-    @apply badge text-amber-600 bg-amber-50 border-amber-100;
+    @apply badge text-amber-600 bg-amber-50 border-amber-100 dark:text-amber-300 dark:bg-amber-400/10 dark:border-amber-400/25;
   }
   .badge-red {
-    @apply badge text-red-600 bg-red-50 border-red-100;
+    @apply badge text-red-600 bg-red-50 border-red-100 dark:text-red-300 dark:bg-red-400/10 dark:border-red-400/25;
   }
 
   .btn-primary {
-    @apply inline-flex items-center justify-center gap-2 rounded-full bg-gradient-to-b from-blue-500 to-blue-600 border border-blue-700 text-white text-sm font-normal shadow-btn hover:from-blue-400 hover:to-blue-500 hover:-translate-y-0.5 active:translate-y-0 transition-all duration-300 disabled:opacity-50 disabled:pointer-events-none px-5 py-2.5;
+    @apply inline-flex items-center justify-center gap-2 rounded-full border text-sm font-normal shadow-btn
+           hover:-translate-y-0.5 active:translate-y-0 transition-all duration-300
+           disabled:opacity-50 disabled:pointer-events-none px-5 py-2.5;
+    background-image: linear-gradient(to bottom, var(--acao-de), var(--acao-para));
+    border-color: var(--acao-borda);
+    color: var(--acao-texto);
+  }
+  .btn-primary:hover {
+    filter: brightness(1.08);
   }
   .btn-secondary {
-    @apply inline-flex items-center justify-center gap-2 rounded-full bg-gradient-to-b from-white to-slate-50 border border-slate-200 text-slate-700 text-sm font-normal shadow-control hover:from-slate-50 hover:to-slate-100 hover:-translate-y-0.5 active:translate-y-0 transition-all duration-300 disabled:opacity-50 disabled:pointer-events-none px-5 py-2.5;
+    @apply inline-flex items-center justify-center gap-2 rounded-full border text-sm font-normal shadow-control
+           hover:-translate-y-0.5 active:translate-y-0 transition-all duration-300
+           disabled:opacity-50 disabled:pointer-events-none px-5 py-2.5;
+    background-color: rgb(var(--superficie) / 0.8);
+    border-color: var(--borda-controle);
+    color: var(--texto);
+  }
+  .btn-secondary:hover {
+    color: var(--realce);
   }
 
   .input {
-    @apply w-full rounded-2xl bg-white/[0.78] border border-slate-200 shadow-control px-4 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-blue-300 focus:ring-2 focus:ring-blue-100 transition-all duration-300;
+    @apply w-full rounded-2xl border shadow-control px-4 py-2.5 text-sm transition-all duration-300
+           focus:outline-none focus:ring-2;
+    background-color: rgb(var(--superficie) / 0.78);
+    border-color: var(--borda-controle);
+    color: var(--texto-forte);
+  }
+  .input::placeholder {
+    color: var(--texto-fraco);
+  }
+  .input:focus {
+    border-color: var(--realce-borda);
+    --tw-ring-color: var(--realce-suave);
   }
   .field-label {
-    @apply block font-mono text-[10px] font-medium uppercase tracking-[-0.02em] text-slate-400 mb-1.5;
+    @apply block font-mono text-[10px] font-medium uppercase tracking-[-0.02em] mb-1.5;
+    color: var(--texto-fraco);
   }
   /* Mesmo visual do field-label, sem display:block (pra <th> de tabela) */
   .th-label {
-    @apply font-mono text-[10px] font-medium uppercase tracking-[-0.02em] text-slate-400;
+    @apply font-mono text-[10px] font-medium uppercase tracking-[-0.02em];
+    color: var(--texto-fraco);
   }
+}
+
+/* ---------------------------------------------------------------------------
+   Remapeia no tema escuro as cores usadas soltas nas telas. Evita espalhar
+   dezenas de variantes dark: por todos os componentes.
+   --------------------------------------------------------------------------- */
+.dark .text-slate-950,
+.dark .text-slate-900 {
+  color: var(--texto-forte);
+}
+.dark .text-slate-700 {
+  color: var(--texto);
+}
+.dark .text-slate-600 {
+  color: var(--texto);
+}
+.dark .text-slate-500 {
+  color: var(--texto-suave);
+}
+.dark .text-slate-400 {
+  color: var(--texto-fraco);
+}
+.dark .text-slate-300 {
+  color: #4a5878;
+}
+.dark .border-slate-100 {
+  border-color: var(--borda-sutil);
+}
+.dark .border-slate-200 {
+  border-color: var(--borda-controle);
+}
+.dark .border-white {
+  border-color: var(--borda);
+}
+.dark .bg-white,
+.dark .bg-white\/90 {
+  background-color: rgb(var(--superficie) / 0.95);
+}
+.dark .bg-white\/\[0\.6\],
+.dark .bg-white\/70,
+.dark .bg-white\/\[0\.78\] {
+  background-color: rgb(var(--superficie) / 0.55);
+}
+.dark .bg-slate-50,
+.dark .bg-slate-100 {
+  background-color: rgb(var(--superficie) / 0.8);
+}
+.dark .hover\:bg-white\/\[0\.84\]:hover,
+.dark .hover\:bg-white\/70:hover {
+  background-color: rgb(var(--superficie) / var(--superficie-op-forte));
+}
+/* Hover das linhas de tabela — sem isto a linha acende em branco no escuro */
+.dark .hover\:bg-white\/\[0\.6\]:hover {
+  background-color: rgb(var(--superficie) / 0.75);
+}
+.dark .hover\:text-blue-600:hover {
+  color: var(--realce);
+}
+.dark .ring-blue-200 {
+  --tw-ring-color: var(--realce-borda);
+}
+/* Caixas de ícone e realces suaves */
+.dark .bg-blue-50 {
+  background-color: rgba(201, 169, 97, 0.12);
+}
+.dark .border-blue-100 {
+  border-color: rgba(201, 169, 97, 0.28);
+}
+.dark .text-blue-500,
+.dark .text-blue-600 {
+  color: var(--realce);
+}
+.dark .bg-emerald-50 {
+  background-color: rgba(52, 211, 153, 0.12);
+}
+.dark .border-emerald-100 {
+  border-color: rgba(52, 211, 153, 0.25);
+}
+.dark .bg-amber-50 {
+  background-color: rgba(251, 191, 36, 0.12);
+}
+.dark .border-amber-100 {
+  border-color: rgba(251, 191, 36, 0.25);
+}
+.dark .bg-red-50,
+.dark .bg-red-50\/60,
+.dark .bg-red-50\/80 {
+  background-color: rgba(248, 113, 113, 0.1);
+}
+.dark .border-red-100 {
+  border-color: rgba(248, 113, 113, 0.25);
+}
+.dark .text-red-600 {
+  color: #fca5a5;
+}
+.dark .text-emerald-500 {
+  color: #6ee7b7;
+}
+.dark .text-emerald-700 {
+  color: #a7f3d0;
+}
+.dark .text-amber-500,
+.dark .text-amber-600 {
+  color: #fcd34d;
+}
+/* Blocos de destaque (próxima da vez, item ativo do menu) usam o gradiente de ação */
+.dark .from-blue-500 {
+  --tw-gradient-from: var(--acao-de) var(--tw-gradient-from-position);
+  --tw-gradient-to: rgb(212 182 114 / 0) var(--tw-gradient-to-position);
+  --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to);
+}
+.dark .to-blue-600 {
+  --tw-gradient-to: var(--acao-para) var(--tw-gradient-to-position);
+}
+.dark .border-blue-700 {
+  border-color: var(--acao-borda);
+}
+.dark .text-blue-100 {
+  color: rgba(11, 18, 32, 0.72);
+}
+.dark .bg-blue-50\/80 {
+  background-color: rgba(201, 169, 97, 0.12);
+}
+/* A placa da logo já é escura; no tema escuro ela some no fundo, então clareia */
+.dark .from-slate-900 {
+  --tw-gradient-from: #1c2740 var(--tw-gradient-from-position);
+}
+.dark .to-slate-950 {
+  --tw-gradient-to: #131c30 var(--tw-gradient-to-position);
+}
+.dark .border-slate-800 {
+  border-color: rgba(201, 169, 97, 0.22);
+}
+/* Fundo do bloco de código da tela de configuração */
+.dark .bg-slate-950 {
+  background-color: #060b16;
 }
 
 /* Fundo ambiente — blobs em drift lento + textura de pontos (do template AURA) */

@@ -1,7 +1,7 @@
 import { useMemo, useState, type FormEvent } from 'react'
 import { useData, type NovoPpp } from '../state/DataProvider'
 import { CELULAS_PPP, CONCLUSOES, PRAZO_PPP_DIAS_UTEIS, TIPOS_PPP } from '../lib/config'
-import { formatarData, hojeISO, rotuloMes, somarDiasUteis } from '../lib/dates'
+import { formatarData, hojeISO, mesesComFuturos, rotuloMes, somarDiasUteis } from '../lib/dates'
 import { distintos, maiusculo } from '../lib/texto'
 import GerenciarNomes from './GerenciarNomes'
 import {
@@ -51,7 +51,8 @@ export default function Ppp() {
     () => distintos([...ppp.map((r) => r.responsavel), ...equipe.celulas.map((c) => c.responsavel)]),
     [ppp, equipe],
   )
-  const meses = useMemo(() => [...new Set(ppp.map((r) => r.mes))].sort((a, b) => b.localeCompare(a)), [ppp])
+  // Inclui os próximos meses: ela lança PPP com prazo pra frente
+  const meses = useMemo(() => mesesComFuturos(ppp.map((r) => r.mes)), [ppp])
   const tipos = useMemo(() => distintos([...TIPOS_PPP, ...ppp.map((r) => r.tipo)]), [ppp])
 
   const filtrados = useMemo(() => {

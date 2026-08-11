@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import { supabase, supabaseConfigurado } from './lib/supabase'
+import { useTema } from './state/tema'
 import { DataProvider, useData } from './state/DataProvider'
 import { Icone, TituloTela } from './components/Ui'
 import logoMaxipas from './assets/logo-maxipas-branco.png'
@@ -18,6 +19,7 @@ export default function App() {
   const [sessao, setSessao] = useState<Session | null>(null)
   const [verificando, setVerificando] = useState(true)
   const [recuperandoSenha, setRecuperandoSenha] = useState(false)
+  const { tema, alternar } = useTema()
 
   useEffect(() => {
     if (!supabaseConfigurado) {
@@ -41,7 +43,7 @@ export default function App() {
 
   return (
     <>
-      <Fundo />
+      <Fundo escuro={tema === 'escuro'} />
       {!supabaseConfigurado ? (
         <Setup />
       ) : verificando ? (
@@ -52,7 +54,7 @@ export default function App() {
         <Login />
       ) : (
         <DataProvider>
-          <Shell />
+          <Shell escuro={tema === 'escuro'} alternarTema={alternar} />
         </DataProvider>
       )}
     </>
@@ -60,16 +62,30 @@ export default function App() {
 }
 
 /** Fundo ambiente do design system: blobs em drift + textura de pontos. */
-function Fundo() {
+function Fundo({ escuro }: { escuro: boolean }) {
   return (
     <div className="fixed inset-0 z-0 overflow-hidden pointer-events-none">
-      <div className="bg-blob-one absolute top-[-12%] left-[-12%] w-[52vw] h-[52vw] rounded-full bg-blue-200/35 blur-[7.5rem] will-change-transform" />
-      <div className="bg-blob-two absolute bottom-[-18%] right-[-10%] w-[62vw] h-[62vw] rounded-full bg-sky-200/[0.22] blur-[8.75rem] will-change-transform" />
-      <div className="bg-blob-three absolute top-[36%] left-[36%] w-[30vw] h-[30vw] rounded-full bg-white/55 blur-[5rem] will-change-transform" />
       <div
-        className="bg-dots absolute inset-0 opacity-[0.22]"
+        className={`bg-blob-one absolute top-[-12%] left-[-12%] w-[52vw] h-[52vw] rounded-full blur-[7.5rem] will-change-transform ${
+          escuro ? 'bg-[#c9a961]/[0.09]' : 'bg-blue-200/35'
+        }`}
+      />
+      <div
+        className={`bg-blob-two absolute bottom-[-18%] right-[-10%] w-[62vw] h-[62vw] rounded-full blur-[8.75rem] will-change-transform ${
+          escuro ? 'bg-[#1d3a6b]/25' : 'bg-sky-200/[0.22]'
+        }`}
+      />
+      <div
+        className={`bg-blob-three absolute top-[36%] left-[36%] w-[30vw] h-[30vw] rounded-full blur-[5rem] will-change-transform ${
+          escuro ? 'bg-[#243352]/30' : 'bg-white/55'
+        }`}
+      />
+      <div
+        className={`bg-dots absolute inset-0 ${escuro ? 'opacity-[0.30]' : 'opacity-[0.22]'}`}
         style={{
-          backgroundImage: 'radial-gradient(circle at 1px 1px, rgba(15,23,42,0.09) 1px, transparent 0)',
+          backgroundImage: `radial-gradient(circle at 1px 1px, ${
+            escuro ? 'rgba(201,169,97,0.10)' : 'rgba(15,23,42,0.09)'
+          } 1px, transparent 0)`,
           backgroundSize: '2rem 2rem',
         }}
       />
@@ -93,7 +109,7 @@ const ITENS_MENU: { tela: Tela; rotulo: string; icone: string }[] = [
   { tela: 'equipe', rotulo: 'Equipe', icone: 'solar:users-group-rounded-linear' },
 ]
 
-function Shell() {
+function Shell({ escuro, alternarTema }: { escuro: boolean; alternarTema: () => void }) {
   const { carregando, erro } = useData()
   const [tela, setTela] = useState<Tela>('dashboard')
   const [menuAberto, setMenuAberto] = useState(false)
@@ -119,7 +135,7 @@ function Shell() {
         </div>
         {menuAberto && (
           <div className="glass-panel mt-2 p-3">
-            <Menu tela={tela} navegar={navegar} />
+            <Menu tela={tela} navegar={navegar} escuro={escuro} alternarTema={alternarTema} />
           </div>
         )}
       </div>
@@ -130,7 +146,7 @@ function Shell() {
           <div className="px-2 pt-2 pb-6">
             <Marca />
           </div>
-          <Menu tela={tela} navegar={navegar} />
+          <Menu tela={tela} navegar={navegar} escuro={escuro} alternarTema={alternarTema} />
         </div>
       </aside>
 
@@ -191,7 +207,17 @@ function Marca({ compacto = false }: { compacto?: boolean }) {
   )
 }
 
-function Menu({ tela, navegar }: { tela: Tela; navegar: (t: Tela) => void }) {
+function Menu({
+  tela,
+  navegar,
+  escuro,
+  alternarTema,
+}: {
+  tela: Tela
+  navegar: (t: Tela) => void
+  escuro: boolean
+  alternarTema: () => void
+}) {
   return (
     <nav className="flex flex-col gap-1 flex-1">
       {ITENS_MENU.map((item) => {
@@ -212,6 +238,13 @@ function Menu({ tela, navegar }: { tela: Tela; navegar: (t: Tela) => void }) {
         )
       })}
       <div className="mt-auto pt-4 flex flex-col gap-1">
+        <button
+          onClick={alternarTema}
+          className="w-full flex items-center gap-3 rounded-full px-4 py-2.5 text-sm text-slate-500 hover:text-blue-600 hover:bg-white/70 transition-all duration-300"
+        >
+          <Icone nome={escuro ? 'solar:sun-linear' : 'solar:moon-linear'} className="text-lg" />
+          {escuro ? 'Modo claro' : 'Modo escuro'}
+        </button>
         <button
           onClick={() => navegar('senha')}
           className={`w-full flex items-center gap-3 rounded-full px-4 py-2.5 text-sm transition-all duration-300 ${

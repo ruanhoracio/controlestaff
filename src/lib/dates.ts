@@ -37,6 +37,21 @@ export function rotuloMes(mes: string): string {
   return `${MESES_CURTOS[idx] ?? m}/${ano}`
 }
 
+/**
+ * Lista de meses 'YYYY-MM' do mais recente para o mais antigo, cobrindo os
+ * meses que já têm dados mais os próximos `futuros` a partir do mês corrente.
+ * A técnica lança PPP com prazo para a frente, então o filtro precisa
+ * oferecer os meses que ainda vão chegar.
+ */
+export function mesesComFuturos(existentes: string[], futuros = 12): string[] {
+  const [ano, mes] = mesAtual().split('-').map(Number)
+  const proximos = Array.from({ length: futuros + 1 }, (_, i) => {
+    const d = new Date(ano, mes - 1 + i, 1)
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+  })
+  return [...new Set([...proximos, ...existentes])].sort((a, b) => b.localeCompare(a))
+}
+
 export function dataLongaHoje(): string {
   return new Date().toLocaleDateString('pt-BR', {
     weekday: 'long',

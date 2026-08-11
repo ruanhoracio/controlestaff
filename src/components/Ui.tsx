@@ -11,9 +11,11 @@ export function Eyebrow({ children }: { children: ReactNode }) {
 
 export function TituloTela({ eyebrow, titulo, descricao }: { eyebrow: string; titulo: string; descricao?: string }) {
   return (
-    <div className="mb-8">
+    <div className={titulo || descricao ? 'mb-8' : 'mb-5'}>
       <Eyebrow>{eyebrow}</Eyebrow>
-      <h1 className="text-3xl md:text-4xl font-light tracking-tight text-slate-950 leading-[1.05]">{titulo}</h1>
+      {titulo && (
+        <h1 className="text-3xl md:text-4xl font-light tracking-tight text-slate-950 leading-[1.05]">{titulo}</h1>
+      )}
       {descricao && <p className="mt-3 text-base leading-7 text-slate-600 font-light max-w-2xl">{descricao}</p>}
     </div>
   )
