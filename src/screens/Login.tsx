@@ -1,7 +1,8 @@
 import { useState, type FormEvent } from 'react'
 import { supabase } from '../lib/supabase'
 import { Campo, Icone } from '../components/Ui'
-import logoMaxipas from '../assets/logo-maxipas-branco.png'
+import Marca from '../components/Marca'
+import { useTema } from '../state/tema'
 
 type Modo = 'entrar' | 'criar' | 'recuperar'
 
@@ -16,6 +17,7 @@ const TITULOS: Record<Modo, { titulo: string; legenda: string; acao: string }> =
 }
 
 export default function Login() {
+  const { tema } = useTema()
   const [modo, setModo] = useState<Modo>('entrar')
   const [email, setEmail] = useState('')
   const [senha, setSenha] = useState('')
@@ -65,12 +67,9 @@ export default function Login() {
     <div className="min-h-screen flex items-center justify-center px-6">
       <div className="w-full max-w-sm">
         <div className="glass-panel p-8">
-          <div className="flex flex-col gap-2.5 mb-8">
-            {/* Placa escura: o logo tem o texto em branco, precisa de fundo escuro pra contrastar */}
-            <span className="inline-flex rounded-2xl bg-gradient-to-b from-slate-900 to-slate-950 border border-slate-800 shadow-raised px-5 py-3.5 self-start">
-              <img src={logoMaxipas} alt="Maxipas — Saúde Ocupacional" className="h-7 w-auto" />
-            </span>
-            <span className="font-mono text-[10px] font-medium tracking-[-0.02em] text-slate-400 uppercase pl-1">
+          <div className="mb-8">
+            <Marca escuro={tema === 'escuro'} tamanho="grande" comSubtitulo={false} />
+            <span className="mt-2 block font-mono text-[10px] font-medium tracking-[-0.02em] text-slate-400 uppercase">
               Controle Staff · Segurança do Trabalho
             </span>
           </div>

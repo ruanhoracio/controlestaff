@@ -1,7 +1,8 @@
 import { useState, type FormEvent } from 'react'
 import { supabase } from '../lib/supabase'
 import { Campo, Icone } from '../components/Ui'
-import logoMaxipas from '../assets/logo-maxipas-branco.png'
+import Marca from '../components/Marca'
+import { useTema } from '../state/tema'
 
 /**
  * Define uma nova senha para quem já está autenticado.
@@ -15,6 +16,7 @@ export default function NovaSenha({
   modo: 'recuperacao' | 'troca'
   aoConcluir: () => void
 }) {
+  const { tema } = useTema()
   const [senha, setSenha] = useState('')
   const [confirmacao, setConfirmacao] = useState('')
   const [enviando, setEnviando] = useState(false)
@@ -110,9 +112,9 @@ export default function NovaSenha({
       <div className="min-h-screen flex items-center justify-center px-6">
         <div className="w-full max-w-sm">
           <div className="glass-panel p-8">
-            <span className="inline-flex rounded-2xl bg-gradient-to-b from-slate-900 to-slate-950 border border-slate-800 shadow-raised px-5 py-3.5 mb-7">
-              <img src={logoMaxipas} alt="Maxipas — Saúde Ocupacional" className="h-7 w-auto" />
-            </span>
+            <div className="mb-7">
+              <Marca escuro={tema === 'escuro'} tamanho="grande" comSubtitulo={false} />
+            </div>
             {conteudo}
           </div>
         </div>
