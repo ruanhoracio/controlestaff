@@ -10,6 +10,8 @@ export interface PppRecord {
   tipo: string
   admissao: string | null
   demissao: string | null
+  /** Funcionário ainda na empresa — marca explícita pra não confundir com demissão em branco. */
+  ativo: boolean
   data_solicitada: string
   prazo_entrega: string
   data_entrega: string | null

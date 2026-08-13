@@ -82,15 +82,22 @@ export function DataProvider({ children }: { children: ReactNode }) {
   }
 
   async function salvarPpp(registro: NovoPpp, id?: string) {
-    if (id) {
-      const { data, error } = await supabase!.from('ppp_records').update(registro).eq('id', id).select().single()
-      if (error) throw error
-      setPpp((atual) => atual.map((r) => (r.id === id ? (data as PppRecord) : r)))
-    } else {
-      const { data, error } = await supabase!.from('ppp_records').insert(registro).select().single()
-      if (error) throw error
-      setPpp((atual) => [data as PppRecord, ...atual])
+    const gravar = (payload: Partial<NovoPpp>) =>
+      id
+        ? supabase!.from('ppp_records').update(payload).eq('id', id).select().single()
+        : supabase!.from('ppp_records').insert(payload).select().single()
+
+    let { data, error } = await gravar(registro)
+    // A coluna `ativo` veio na migração 03. Se o banco ainda não tiver rodado
+    // ela, grava sem o campo em vez de deixar o cadastro quebrado.
+    if (error && /ativo/.test(error.message)) {
+      const { ativo, ...semAtivo } = registro
+      ;({ data, error } = await gravar(semAtivo))
     }
+    if (error) throw error
+
+    const salvo = { ativo: false, ...(data as Partial<PppRecord>) } as PppRecord
+    setPpp((atual) => (id ? atual.map((r) => (r.id === id ? salvo : r)) : [salvo, ...atual]))
   }
 
   async function excluirPpp(id: string) {

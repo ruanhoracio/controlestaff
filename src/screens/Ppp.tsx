@@ -243,7 +243,7 @@ export default function Ppp() {
         ) : (
           <>
             <div className="overflow-x-auto max-h-[36rem]">
-              <table className="w-full text-sm min-w-[68rem]">
+              <table className="w-full text-sm min-w-[80rem]">
                 <thead className="sticky top-0 bg-white/90 backdrop-blur">
                   <tr className="text-left border-b border-slate-100">
                     {[
@@ -251,6 +251,8 @@ export default function Ppp() {
                       'Empresa',
                       'Célula',
                       'Tipo',
+                      'Admissão',
+                      'Demissão',
                       'Solicitado',
                       'Prazo',
                       'Entrega',
@@ -285,6 +287,10 @@ export default function Ppp() {
                         <td className="px-4 py-3 text-slate-600 whitespace-nowrap">{r.empresa}</td>
                         <td className="px-4 py-3 text-slate-500 whitespace-nowrap">{r.celula || '—'}</td>
                         <td className="px-4 py-3 text-slate-500 whitespace-nowrap">{r.tipo || '—'}</td>
+                        <td className="px-4 py-3 text-slate-500 whitespace-nowrap">{formatarData(r.admissao)}</td>
+                        <td className="px-4 py-3 text-slate-500 whitespace-nowrap">
+                          {r.ativo ? <span className="badge-emerald">ativo</span> : formatarData(r.demissao)}
+                        </td>
                         <td className="px-4 py-3 text-slate-500 whitespace-nowrap">{formatarData(r.data_solicitada)}</td>
                         <td className={`px-4 py-3 whitespace-nowrap ${atrasado ? 'text-red-600' : 'text-slate-500'}`}>
                           {formatarData(r.prazo_entrega)}
@@ -387,6 +393,7 @@ function FormPpp({
     tipo: '',
     admissao: null,
     demissao: null,
+    ativo: false,
     data_solicitada: hojeISO(),
     prazo_entrega: somarDiasUteis(hojeISO(), PRAZO_PPP_DIAS_UTEIS),
     data_entrega: null,
@@ -406,7 +413,7 @@ function FormPpp({
     if (chaveAtual !== null) {
       if (registro) {
         const { id, created_at, ...resto } = registro
-        setForm(resto)
+        setForm({ ...vazio, ...resto })
       } else {
         setForm(vazio)
       }
@@ -508,14 +515,31 @@ function FormPpp({
             onChange={(e) => definir('admissao', e.target.value || null)}
           />
         </Campo>
-        <Campo rotulo="Demissão">
-          <input
-            type="date"
-            className="input"
-            value={form.demissao ?? ''}
-            onChange={(e) => definir('demissao', e.target.value || null)}
-          />
-        </Campo>
+        <div>
+          <Campo rotulo="Demissão">
+            <input
+              type="date"
+              className="input disabled:opacity-50"
+              disabled={form.ativo}
+              value={form.demissao ?? ''}
+              onChange={(e) => definir('demissao', e.target.value || null)}
+            />
+          </Campo>
+          {/* Sem esta marca, demissão em branco fica ambígua: pode ser que não saiu,
+              pode ser que a data ainda não foi preenchida. */}
+          <label className="mt-2 flex items-center gap-2 text-xs text-slate-500 cursor-pointer">
+            <input
+              type="checkbox"
+              className="w-4 h-4 accent-blue-600"
+              checked={form.ativo}
+              onChange={(e) => {
+                definir('ativo', e.target.checked)
+                if (e.target.checked) definir('demissao', null)
+              }}
+            />
+            Funcionário ativo (ainda na empresa)
+          </label>
+        </div>
         <Campo rotulo="Data solicitada *">
           <input
             type="date"

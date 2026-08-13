@@ -96,13 +96,12 @@ export default function Celulas() {
               {posicao ? (
                 <div className="rounded-2xl bg-gradient-to-b from-blue-500 to-blue-600 border border-blue-700 shadow-btn px-5 py-4 mb-4">
                   <p className="font-mono text-[10px] uppercase tracking-[-0.02em] text-blue-100 mb-1">próxima da vez</p>
-                  <p className="text-xl text-white tracking-tight">{posicao}</p>
-                  <p className="text-xs text-blue-100 font-light mt-0.5">
+                  <p className="text-xl text-white tracking-tight">
                     {/* Em ergonomistas e eSocial a posição já É a pessoa; não repetir */}
-                    {[responsavel !== posicao ? responsavel : '', esocial ? `eSocial: ${esocial}` : '']
-                      .filter(Boolean)
-                      .join(' · ') || '—'}
+                    {posicao}
+                    {responsavel && responsavel !== posicao && ` – ${responsavel}`}
                   </p>
+                  {esocial && <p className="text-base text-blue-50 tracking-tight mt-0.5">eSocial – {esocial}</p>}
                 </div>
               ) : (
                 <div className="rounded-2xl bg-slate-100 border border-slate-200 px-5 py-4 mb-4">
