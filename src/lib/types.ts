@@ -75,4 +75,36 @@ export interface EquipeConfig {
   ergonomistas: Ergonomista[]
 }
 
-export type Tela = 'dashboard' | 'ppp' | 'celulas' | 'cat' | 'equipe' | 'senha'
+/** gestor vê tudo; tecnico só o Controle de PPP; bloqueado não vê nada. */
+export type Papel = 'gestor' | 'tecnico' | 'bloqueado'
+
+export interface Perfil {
+  user_id: string
+  nome: string
+  email: string
+  papel: Papel
+  created_at: string
+}
+
+export interface LogAtividade {
+  id: number
+  user_id: string | null
+  quem: string
+  tabela: string
+  acao: 'INSERT' | 'UPDATE' | 'DELETE'
+  registro_id: string | null
+  resumo: string
+  antes: Record<string, any> | null
+  depois: Record<string, any> | null
+  created_at: string
+}
+
+export type Tela =
+  | 'dashboard'
+  | 'ppp'
+  | 'celulas'
+  | 'cat'
+  | 'equipe'
+  | 'historico'
+  | 'acessos'
+  | 'senha'

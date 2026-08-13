@@ -12,6 +12,8 @@ import Ppp from './screens/Ppp'
 import Celulas from './screens/Celulas'
 import Cat from './screens/Cat'
 import Equipe from './screens/Equipe'
+import Historico from './screens/Historico'
+import Acessos from './screens/Acessos'
 import NovaSenha from './screens/NovaSenha'
 import type { Tela } from './lib/types'
 
@@ -101,18 +103,27 @@ function TelaCarregando() {
   )
 }
 
-const ITENS_MENU: { tela: Tela; rotulo: string; icone: string }[] = [
-  { tela: 'dashboard', rotulo: 'Dashboard', icone: 'solar:widget-linear' },
+/** `soGestor` é só a metade visual — quem manda de verdade é o RLS do banco. */
+const ITENS_MENU: { tela: Tela; rotulo: string; icone: string; soGestor?: boolean }[] = [
+  { tela: 'dashboard', rotulo: 'Dashboard', icone: 'solar:widget-linear', soGestor: true },
   { tela: 'ppp', rotulo: 'Controle de PPP', icone: 'solar:document-text-linear' },
-  { tela: 'celulas', rotulo: 'Designar Célula', icone: 'solar:buildings-2-linear' },
-  { tela: 'cat', rotulo: 'Designar CAT', icone: 'solar:siren-rounded-linear' },
-  { tela: 'equipe', rotulo: 'Equipe', icone: 'solar:users-group-rounded-linear' },
+  { tela: 'celulas', rotulo: 'Designar Célula', icone: 'solar:buildings-2-linear', soGestor: true },
+  { tela: 'cat', rotulo: 'Designar CAT', icone: 'solar:siren-rounded-linear', soGestor: true },
+  { tela: 'equipe', rotulo: 'Equipe', icone: 'solar:users-group-rounded-linear', soGestor: true },
+  { tela: 'historico', rotulo: 'Histórico', icone: 'solar:history-linear', soGestor: true },
+  { tela: 'acessos', rotulo: 'Acessos', icone: 'solar:shield-user-linear', soGestor: true },
 ]
 
 function Shell({ escuro, alternarTema }: { escuro: boolean; alternarTema: () => void }) {
-  const { carregando, erro } = useData()
-  const [tela, setTela] = useState<Tela>('dashboard')
+  const { carregando, erro, papel, souGestor } = useData()
+  // null = ainda não escolheu; a tela inicial depende do papel, que só chega
+  // depois do primeiro render
+  const [tela, setTela] = useState<Tela | null>(null)
   const [menuAberto, setMenuAberto] = useState(false)
+
+  const escolhida = tela ?? (souGestor ? 'dashboard' : 'ppp')
+  const permitida = ITENS_MENU.find((i) => i.tela === escolhida)?.soGestor && !souGestor ? 'ppp' : escolhida
+  const bloqueado = papel === 'bloqueado'
 
   function navegar(t: Tela) {
     setTela(t)
@@ -135,7 +146,14 @@ function Shell({ escuro, alternarTema }: { escuro: boolean; alternarTema: () => 
         </div>
         {menuAberto && (
           <div className="glass-panel mt-2 p-3">
-            <Menu tela={tela} navegar={navegar} escuro={escuro} alternarTema={alternarTema} />
+            <Menu
+              tela={permitida}
+              navegar={navegar}
+              escuro={escuro}
+              alternarTema={alternarTema}
+              souGestor={souGestor}
+              bloqueado={bloqueado}
+            />
           </div>
         )}
       </div>
@@ -146,7 +164,14 @@ function Shell({ escuro, alternarTema }: { escuro: boolean; alternarTema: () => 
           <div className="px-2 pt-2 pb-6">
             <Marca escuro={escuro} />
           </div>
-          <Menu tela={tela} navegar={navegar} escuro={escuro} alternarTema={alternarTema} />
+          <Menu
+            tela={permitida}
+            navegar={navegar}
+            escuro={escuro}
+            alternarTema={alternarTema}
+            souGestor={souGestor}
+            bloqueado={bloqueado}
+          />
         </div>
       </aside>
 
@@ -160,22 +185,28 @@ function Shell({ escuro, alternarTema }: { escuro: boolean; alternarTema: () => 
           )}
           {carregando ? (
             <TelaCarregando />
-          ) : tela === 'dashboard' ? (
+          ) : bloqueado ? (
+            <SemAcesso />
+          ) : permitida === 'dashboard' ? (
             <Dashboard navegar={navegar} />
-          ) : tela === 'ppp' ? (
+          ) : permitida === 'ppp' ? (
             <Ppp />
-          ) : tela === 'celulas' ? (
+          ) : permitida === 'celulas' ? (
             <Celulas />
-          ) : tela === 'cat' ? (
+          ) : permitida === 'cat' ? (
             <Cat irParaEquipe={() => navegar('equipe')} />
-          ) : tela === 'senha' ? (
+          ) : permitida === 'historico' ? (
+            <Historico />
+          ) : permitida === 'acessos' ? (
+            <Acessos />
+          ) : permitida === 'senha' ? (
             <>
               <TituloTela
                 eyebrow="Conta"
                 titulo="Trocar senha"
                 descricao="Escolha uma nova senha de acesso ao Controle Staff."
               />
-              <NovaSenha modo="troca" aoConcluir={() => navegar('dashboard')} />
+              <NovaSenha modo="troca" aoConcluir={() => navegar(souGestor ? 'dashboard' : 'ppp')} />
             </>
           ) : (
             <Equipe key={String(carregando)} />
@@ -187,20 +218,36 @@ function Shell({ escuro, alternarTema }: { escuro: boolean; alternarTema: () => 
 }
 
 
+function SemAcesso() {
+  return (
+    <div className="glass-card p-8 max-w-lg">
+      <h1 className="text-2xl font-light tracking-tight text-slate-950 mb-2">Acesso bloqueado</h1>
+      <p className="text-sm text-slate-500 font-light">
+        Sua conta existe, mas ainda não tem permissão pra ver os dados. Peça pra quem cuida do Controle Staff liberar
+        seu acesso na tela de Acessos.
+      </p>
+    </div>
+  )
+}
+
 function Menu({
   tela,
   navegar,
   escuro,
   alternarTema,
+  souGestor,
+  bloqueado = false,
 }: {
   tela: Tela
   navegar: (t: Tela) => void
   escuro: boolean
   alternarTema: () => void
+  souGestor: boolean
+  bloqueado?: boolean
 }) {
   return (
     <nav className="flex flex-col gap-1 flex-1">
-      {ITENS_MENU.map((item) => {
+      {ITENS_MENU.filter((i) => !bloqueado && (souGestor || !i.soGestor)).map((item) => {
         const ativo = tela === item.tela
         return (
           <button

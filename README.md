@@ -26,6 +26,38 @@ que falta.
    - Se o Supabase pedir confirmação de e-mail e isso atrapalhar, desative em
      **Authentication → Providers → Email → Confirm email**.
 
+### Migrações
+
+Os arquivos `supabase/migracao-*.sql` são alterações de banco feitas depois do
+schema inicial. Rode em ordem, no mesmo SQL Editor — todos podem rodar de novo
+sem estragar nada:
+
+| Arquivo | O que faz |
+| --- | --- |
+| `migracao-01-planilhas.sql` | Ajusta o modelo às planilhas reais |
+| `migracao-02-ajustes.sql` | Maiúsculas, equipe remodelada, eSocial por rodízio |
+| `migracao-03-ativo.sql` | Marca de funcionário ativo no PPP |
+| `migracao-04-acessos.sql` | Papéis (gestor/técnico), dados compartilhados e histórico |
+
+## Acessos e papéis
+
+A partir da migração 04 todo mundo trabalha nos **mesmos** dados, com permissão
+por papel — quem manda é o RLS do banco, o menu só reflete isso:
+
+| Papel | Vê |
+| --- | --- |
+| `gestor` | Tudo, mais **Histórico** e **Acessos** |
+| `tecnico` | Só o **Controle de PPP** (lança, edita e exclui) |
+| `bloqueado` | Nada |
+
+Cada pessoa se cadastra sozinha e escolhe o papel na tela de criar conta; um
+gestor confirma ou muda depois em **Acessos**. Como o cadastro é aberto, essa
+tela é também onde se bloqueia quem não devia ter entrado.
+
+O **Histórico** é gravado por gatilho no Postgres (não pela aplicação), então
+registra toda inserção, alteração e exclusão mesmo que alguém chame a API por
+fora. Só gestor lê, e ninguém escreve nele.
+
 ## Publicar (pra usar de qualquer máquina)
 
 Qualquer host estático serve. Com [Vercel](https://vercel.com) (grátis):

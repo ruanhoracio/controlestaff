@@ -8,7 +8,11 @@ type Modo = 'entrar' | 'criar' | 'recuperar'
 
 const TITULOS: Record<Modo, { titulo: string; legenda: string; acao: string }> = {
   entrar: { titulo: 'Bem-vinda de volta', legenda: 'Entre pra ver seu dia organizado.', acao: 'Entrar' },
-  criar: { titulo: 'Criar conta', legenda: 'Uma conta individual, seus dados só seus.', acao: 'Criar conta' },
+  criar: {
+    titulo: 'Criar conta',
+    legenda: 'Login individual, dados compartilhados com a equipe.',
+    acao: 'Criar conta',
+  },
   recuperar: {
     titulo: 'Esqueceu a senha?',
     legenda: 'Informe seu e-mail e enviamos um link pra você criar uma nova.',
@@ -21,6 +25,8 @@ export default function Login() {
   const [modo, setModo] = useState<Modo>('entrar')
   const [email, setEmail] = useState('')
   const [senha, setSenha] = useState('')
+  const [nome, setNome] = useState('')
+  const [papel, setPapel] = useState<'tecnico' | 'gestor'>('tecnico')
   const [enviando, setEnviando] = useState(false)
   const [erro, setErro] = useState<string | null>(null)
   const [aviso, setAviso] = useState<string | null>(null)
@@ -44,7 +50,12 @@ export default function Login() {
         if (error) throw error
         setAviso('Link enviado. Confira a caixa de entrada (e o spam) e abra o link pra criar a nova senha.')
       } else if (modo === 'criar') {
-        const { data, error } = await supabase!.auth.signUp({ email, password: senha })
+        // nome e papel viajam como metadados; o gatilho do banco cria o perfil com eles
+        const { data, error } = await supabase!.auth.signUp({
+          email,
+          password: senha,
+          options: { data: { nome: nome.trim(), papel } },
+        })
         if (error) throw error
         if (!data.session) {
           setAviso('Conta criada. Confirme o e-mail recebido e entre em seguida.')
@@ -78,6 +89,19 @@ export default function Login() {
           <p className="text-sm text-slate-500 font-light mb-6">{t.legenda}</p>
 
           <form onSubmit={enviar} className="space-y-4">
+            {modo === 'criar' && (
+              <Campo rotulo="Seu nome">
+                <input
+                  required
+                  className="input"
+                  value={nome}
+                  onChange={(e) => setNome(e.target.value)}
+                  placeholder="Como aparece no histórico"
+                  autoComplete="name"
+                />
+              </Campo>
+            )}
+
             <Campo rotulo="E-mail">
               <input
                 type="email"
@@ -103,6 +127,38 @@ export default function Login() {
                   autoComplete={modo === 'criar' ? 'new-password' : 'current-password'}
                 />
               </Campo>
+            )}
+
+            {modo === 'criar' && (
+              <div>
+                <span className="field-label">Seu acesso</span>
+                <div className="grid grid-cols-2 gap-2">
+                  {(
+                    [
+                      { valor: 'tecnico', rotulo: 'Técnica(o)', ajuda: 'Só o Controle de PPP' },
+                      { valor: 'gestor', rotulo: 'Gestora(o)', ajuda: 'Acesso a tudo' },
+                    ] as const
+                  ).map((op) => (
+                    <button
+                      key={op.valor}
+                      type="button"
+                      onClick={() => setPapel(op.valor)}
+                      className={`rounded-2xl border px-3 py-2.5 text-left transition-all duration-300 ${
+                        papel === op.valor
+                          ? 'bg-gradient-to-b from-blue-500 to-blue-600 border-blue-700 text-white shadow-btn'
+                          : 'bg-white/[0.6] border-slate-200 text-slate-600 hover:border-blue-300'
+                      }`}
+                    >
+                      <span className="block text-sm">{op.rotulo}</span>
+                      <span
+                        className={`block text-[11px] font-light ${papel === op.valor ? 'text-blue-100' : 'text-slate-400'}`}
+                      >
+                        {op.ajuda}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
             )}
 
             {erro && <p className="text-xs text-red-600 bg-red-50 border border-red-100 rounded-2xl px-4 py-3">{erro}</p>}

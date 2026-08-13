@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
 import { supabase } from '../lib/supabase'
 import { EQUIPE_PADRAO } from '../lib/config'
-import type { DesignacaoCat, DesignacaoCelula, EquipeConfig, PppRecord } from '../lib/types'
+import type { DesignacaoCat, DesignacaoCelula, EquipeConfig, Papel, Perfil, PppRecord } from '../lib/types'
 
 export type NovoPpp = Omit<PppRecord, 'id' | 'created_at'>
 export type NovaDesigCelula = Omit<DesignacaoCelula, 'id' | 'created_at'>
@@ -10,6 +10,9 @@ export type NovaDesigCat = Omit<DesignacaoCat, 'id' | 'created_at'>
 interface DataContextValue {
   carregando: boolean
   erro: string | null
+  perfil: Perfil | null
+  papel: Papel
+  souGestor: boolean
   ppp: PppRecord[]
   salvarPpp: (registro: NovoPpp, id?: string) => Promise<void>
   excluirPpp: (id: string) => Promise<void>
@@ -40,15 +43,35 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const [desigCats, setDesigCats] = useState<DesignacaoCat[]>([])
   const [equipe, setEquipe] = useState<EquipeConfig>(EQUIPE_PADRAO)
   const [configId, setConfigId] = useState<string | null>(null)
+  const [perfil, setPerfil] = useState<Perfil | null>(null)
+  const [papel, setPapel] = useState<Papel>('gestor')
 
   useEffect(() => {
     carregarTudo()
   }, [])
 
+  /**
+   * Papel de quem entrou. Enquanto a migração 04 não rodar a tabela `perfis`
+   * nem existe — nesse caso todo mundo segue como gestor, que é como o app
+   * funcionava antes de ter papéis.
+   */
+  async function carregarPerfil(): Promise<Papel> {
+    const { data: sessao } = await supabase!.auth.getSession()
+    const uid = sessao.session?.user.id
+    if (!uid) return 'gestor'
+    const { data, error } = await supabase!.from('perfis').select('*').eq('user_id', uid).maybeSingle()
+    if (error) return 'gestor'
+    const meu = (data as Perfil) ?? null
+    setPerfil(meu)
+    setPapel(meu?.papel ?? 'tecnico')
+    return meu?.papel ?? 'tecnico'
+  }
+
   async function carregarTudo() {
     setCarregando(true)
     setErro(null)
     try {
+      const meuPapel = await carregarPerfil()
       const [rPpp, rCel, rCat, rCfg] = await Promise.all([
         supabase!.from('ppp_records').select('*').order('data_solicitada', { ascending: false }),
         supabase!.from('designacoes_celula').select('*').order('created_at', { ascending: false }),
@@ -63,7 +86,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
       if (rCfg.data) {
         setConfigId(rCfg.data.id)
         setEquipe(rCfg.data.equipe as EquipeConfig)
-      } else {
+      } else if (meuPapel === 'gestor') {
         // primeira vez: grava a equipe padrão pra já ficar disponível em qualquer máquina
         const { data, error } = await supabase!
           .from('app_config')
@@ -148,6 +171,9 @@ export function DataProvider({ children }: { children: ReactNode }) {
       value={{
         carregando,
         erro,
+        perfil,
+        papel,
+        souGestor: papel === 'gestor',
         ppp,
         salvarPpp,
         excluirPpp,
